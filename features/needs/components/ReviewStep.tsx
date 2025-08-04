@@ -1,7 +1,7 @@
 'use client';
 
 import { useNeedsStore } from '../stores/needsStore';
-import { getTrendById } from '@/features/trends/services/trend-service';
+import { trpc } from '@/lib/trpc/client';
 import { clsx } from 'clsx';
 import { useEffect, useState } from 'react';
 import { Trend } from '@/features/trends/types/trend';
@@ -17,25 +17,30 @@ export function ReviewStep({ onNext, onPrevious }: ReviewStepProps) {
   const [selectedTrend, setSelectedTrend] = useState<Trend | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Fetch the selected trend dynamically
+  // Fetch the selected trend using tRPC
+  const getTrendQuery = trpc.trends.getById.useQuery(
+    { trendId: selectedTrendId! },
+    { enabled: !!selectedTrendId }
+  );
+
   useEffect(() => {
-    async function fetchTrend() {
-      if (!selectedTrendId) return;
-      
+    if (selectedTrendId) {
       setLoading(true);
-      try {
-        const trend = await getTrendById(selectedTrendId);
-        setSelectedTrend(trend);
-      } catch (error) {
-        console.error('Error fetching trend:', error);
-        setSelectedTrend(null);
-      } finally {
-        setLoading(false);
-      }
     }
-    
-    fetchTrend();
   }, [selectedTrendId]);
+
+  useEffect(() => {
+    if (getTrendQuery.data) {
+      setSelectedTrend(getTrendQuery.data);
+      setLoading(false);
+    } else if (getTrendQuery.error) {
+      console.error('Error fetching trend:', getTrendQuery.error);
+      setSelectedTrend(null);
+      setLoading(false);
+    } else if (!getTrendQuery.isLoading && !getTrendQuery.data) {
+      setLoading(false);
+    }
+  }, [getTrendQuery.data, getTrendQuery.error, getTrendQuery.isLoading]);
 
   const handleContinue = () => {
     completeStep('review');

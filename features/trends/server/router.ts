@@ -28,6 +28,35 @@ export const trendsRouter = router({
       }
     }),
 
+  getById: publicProcedure
+    .input(
+      z.object({
+        trendId: z.string(),
+      })
+    )
+    .query(async ({ input }) => {
+      try {
+        // Get the trend dynamically
+        const trend = await getDynamicTrendById(input.trendId);
+        
+        if (!trend) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Trend not found',
+          });
+        }
+
+        return trend;
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to fetch trend',
+        });
+      }
+    }),
+
   analyze: publicProcedure
     .input(
       z.object({

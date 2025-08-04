@@ -51,21 +51,20 @@ function DynamicTrendsSection({
   }>>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadTrends() {
-      try {
-        const { getTrendsForDisplay } = await import('@/features/trends/services/trend-service');
-        const dynamicTrends = await getTrendsForDisplay(5);
-        setTrends(dynamicTrends);
-      } catch (error) {
-        console.error('Error loading dynamic trends:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
+  // Use tRPC to fetch trends
+  const trendsQuery = trpc.trends.list.useQuery({ limit: 5 });
 
-    loadTrends();
-  }, []);
+  useEffect(() => {
+    if (trendsQuery.data) {
+      setTrends(trendsQuery.data);
+      setLoading(false);
+    } else if (trendsQuery.error) {
+      console.error('Error loading dynamic trends:', trendsQuery.error);
+      setLoading(false);
+    } else if (trendsQuery.isLoading) {
+      setLoading(true);
+    }
+  }, [trendsQuery.data, trendsQuery.error, trendsQuery.isLoading]);
 
   if (loading) {
     return (
@@ -114,10 +113,13 @@ export default function IntelligencePage() {
   // Market synthesis mutation
   const synthesizeIntelligence = trpc.intelligence.synthesizeMarketIntelligence.useMutation();
 
+  const utils = trpc.useUtils();
+
   const handleConversationStart = async (trendId: string) => {
     try {
-      const { getTrendById } = await import('@/features/trends/services/trend-service');
-      const trend = await getTrendById(trendId);
+      // Use the tRPC utils to fetch trend data
+      const trend = await utils.trends.getById.fetch({ trendId });
+      
       if (trend) {
         setCurrentTopic(trend.title);
         setConversationMode(true);
