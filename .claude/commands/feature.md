@@ -1,0 +1,1 @@
+ Develop the next feature based on this project state and .claude/specs/ folder contents. Think harder.

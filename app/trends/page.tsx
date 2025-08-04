@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { TrendFilters, TrendGrid, TrendAnalyzer } from '@/features/trends';
 import { TrendCategory, TrendAnalysis } from '@/features/trends';
 import { trpc } from '@/lib/trpc/client';
@@ -8,6 +9,7 @@ import { useFeatureFlag } from '@/lib/flags';
 import { Download } from 'lucide-react';
 
 export default function TrendsPage() {
+  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<TrendCategory | null>(null);
   const [analyzingTrendId, setAnalyzingTrendId] = useState<string | null>(null);
   const [currentAnalysis, setCurrentAnalysis] = useState<{
@@ -17,6 +19,7 @@ export default function TrendsPage() {
 
   const aiAnalysisEnabled = useFeatureFlag('trends.ai_analysis');
   const exportEnabled = useFeatureFlag('trends.export');
+  const needsEnabled = useFeatureFlag('needs.enabled');
 
   const { data: trends, isLoading, error } = trpc.trends.list.useQuery({
     category: selectedCategory || undefined,
@@ -45,6 +48,11 @@ export default function TrendsPage() {
     if (!aiAnalysisEnabled) return;
     setAnalyzingTrendId(trendId);
     analyzeMutation.mutate({ trendId });
+  };
+
+  const handleGenerateNeeds = (trendId: string) => {
+    if (!needsEnabled) return;
+    router.push(`/needs?trendId=${trendId}`);
   };
 
   const handleExport = () => {
@@ -116,6 +124,7 @@ export default function TrendsPage() {
           trends={trends || []}
           onAnalyzeTrend={aiAnalysisEnabled ? handleAnalyzeTrend : undefined}
           analyzingTrendId={analyzingTrendId}
+          onGenerateNeeds={needsEnabled ? handleGenerateNeeds : undefined}
         />
       )}
 

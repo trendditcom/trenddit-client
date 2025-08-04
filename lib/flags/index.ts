@@ -31,8 +31,8 @@ const FLAGS: Record<string, FeatureFlag> = {
   'needs.enabled': {
     id: 'needs.enabled',
     name: 'Needs Discovery',
-    enabled: false,
-    rolloutPercentage: 0,
+    enabled: true,
+    rolloutPercentage: 100,
   },
   'solutions.enabled': {
     id: 'solutions.enabled',
@@ -84,4 +84,32 @@ export function getFeatureFlag(flagId: string): boolean {
 
 export function getAllFlags(): Record<string, FeatureFlag> {
   return FLAGS;
+}
+
+export function useFlags() {
+  const [flags, setFlags] = useState<Record<string, { enabled: boolean }>>({});
+
+  useEffect(() => {
+    const processedFlags: Record<string, { enabled: boolean }> = {};
+    
+    Object.entries(FLAGS).forEach(([key, flag]) => {
+      // Organize flags by feature
+      const parts = key.split('.');
+      if (parts.length === 2) {
+        const [feature, subFlag] = parts;
+        if (!processedFlags[feature]) {
+          processedFlags[feature] = { enabled: false };
+        }
+        
+        if (subFlag === 'enabled') {
+          processedFlags[feature].enabled = flag.enabled && 
+            (flag.rolloutPercentage === 100 || Math.random() * 100 < flag.rolloutPercentage);
+        }
+      }
+    });
+    
+    setFlags(processedFlags);
+  }, []);
+
+  return flags;
 }

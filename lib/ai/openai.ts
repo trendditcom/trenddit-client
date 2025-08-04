@@ -15,6 +15,35 @@ export const TrendAnalysisSchema = z.object({
 
 export type TrendAnalysis = z.infer<typeof TrendAnalysisSchema>;
 
+export async function generateCompletion(prompt: string): Promise<string> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an AI business consultant helping enterprises identify and prioritize business needs. Always respond with valid JSON only.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
+      max_tokens: 2000,
+    });
+
+    const content = response.choices[0].message.content;
+    if (!content) throw new Error('No response from AI');
+
+    return content;
+  } catch (error) {
+    console.error('Error generating AI completion:', error);
+    throw new Error('AI generation failed');
+  }
+}
+
 export async function analyzeTrend(
   title: string,
   summary: string,
@@ -36,7 +65,7 @@ Provide analysis with:
 Keep response concise and actionable.`;
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: 'gpt-4o',
       messages: [
         {
           role: 'system',

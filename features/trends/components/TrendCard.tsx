@@ -36,9 +36,10 @@ interface TrendCardProps {
   trend: Trend;
   onAnalyze?: () => void;
   isAnalyzing?: boolean;
+  onGenerateNeeds?: () => void;
 }
 
-export function TrendCard({ trend, onAnalyze, isAnalyzing }: TrendCardProps) {
+export function TrendCard({ trend, onAnalyze, isAnalyzing, onGenerateNeeds }: TrendCardProps) {
   const impactColor = trend.impact_score >= 8 ? 'text-red-600' : 
                      trend.impact_score >= 5 ? 'text-yellow-600' : 
                      'text-green-600';
@@ -70,23 +71,37 @@ export function TrendCard({ trend, onAnalyze, isAnalyzing }: TrendCardProps) {
           {trend.source} • {new Date(trend.created_at).toLocaleDateString()}
         </div>
 
-        {onAnalyze && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onAnalyze();
-            }}
-            disabled={isAnalyzing}
-            className={clsx(
-              'px-3 py-1 text-xs font-medium rounded-md transition-colors',
-              isAnalyzing
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700'
-            )}
-          >
-            {isAnalyzing ? 'Analyzing...' : 'Analyze'}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {onAnalyze && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAnalyze();
+              }}
+              disabled={isAnalyzing}
+              className={clsx(
+                'px-3 py-1 text-xs font-medium rounded-md transition-colors',
+                isAnalyzing
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
+              )}
+            >
+              {isAnalyzing ? 'Analyzing...' : 'Analyze'}
+            </button>
+          )}
+          
+          {onGenerateNeeds && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onGenerateNeeds();
+              }}
+              className="px-3 py-1 text-xs font-medium rounded-md transition-colors bg-green-600 text-white hover:bg-green-700"
+            >
+              Generate Needs
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

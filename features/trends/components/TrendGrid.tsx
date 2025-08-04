@@ -7,9 +7,10 @@ interface TrendGridProps {
   trends: Trend[];
   onAnalyzeTrend?: (trendId: string) => void;
   analyzingTrendId?: string | null;
+  onGenerateNeeds?: (trendId: string) => void;
 }
 
-export function TrendGrid({ trends, onAnalyzeTrend, analyzingTrendId }: TrendGridProps) {
+export function TrendGrid({ trends, onAnalyzeTrend, analyzingTrendId, onGenerateNeeds }: TrendGridProps) {
   if (trends.length === 0) {
     return (
       <div className="text-center py-12">
@@ -26,6 +27,7 @@ export function TrendGrid({ trends, onAnalyzeTrend, analyzingTrendId }: TrendGri
           trend={trend}
           onAnalyze={onAnalyzeTrend ? () => onAnalyzeTrend(trend.id) : undefined}
           isAnalyzing={analyzingTrendId === trend.id}
+          onGenerateNeeds={onGenerateNeeds ? () => onGenerateNeeds(trend.id) : undefined}
         />
       ))}
     </div>

@@ -52,8 +52,12 @@ export const EVENTS = {
   TREND_EXPORTED: 'trend.exported',
   
   // Need events
+  NEEDS_GENERATED: 'needs.generated',
   NEED_IDENTIFIED: 'need.identified',
   NEED_PRIORITIZED: 'need.prioritized',
+  NEED_UPDATED: 'need.updated',
+  NEEDS_PRIORITIZED: 'needs.prioritized',
+  COMPANY_PROFILE_SAVED: 'company.profile_saved',
   
   // Solution events
   SOLUTION_MATCHED: 'solution.matched',
