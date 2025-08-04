@@ -30,6 +30,13 @@ export default function RootLayout({
                     <a href="/trends" className="text-gray-700 hover:text-indigo-600 font-medium">
                       Trends
                     </a>
+                    <a href="/intelligence" className="text-gray-700 hover:text-indigo-600 font-medium flex items-center gap-1">
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M9.5 2A2.5 2.5 0 0 0 7 4.5v15A2.5 2.5 0 0 0 9.5 22h5a2.5 2.5 0 0 0 2.5-2.5v-15A2.5 2.5 0 0 0 14.5 2h-5Z"/>
+                        <path d="M12 6h.01M12 12h.01M12 18h.01"/>
+                      </svg>
+                      Intelligence
+                    </a>
                   </div>
                 </div>
               </div>
