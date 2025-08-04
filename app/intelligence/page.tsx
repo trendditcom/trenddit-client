@@ -347,7 +347,7 @@ export default function IntelligencePage() {
               <CardContent>
                 {dashboardQuery.data ? (
                   <div className="space-y-3">
-                    {dashboardQuery.data.marketSignals.map((signal, index) => (
+                    {dashboardQuery.data.marketSignals.map((signal: { signal: string; strength: string; confidence: number }, index: number) => (
                       <div key={index} className="p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-sm font-medium">{signal.signal}</span>
@@ -405,7 +405,7 @@ export default function IntelligencePage() {
                     {generateInsights.data && (
                       <div className="space-y-2">
                         <div className="text-xs font-medium">Follow-up questions:</div>
-                        {generateInsights.data.followUpQuestions.slice(0, 2).map((question, index) => (
+                        {generateInsights.data.followUpQuestions.slice(0, 2).map((question: string, index: number) => (
                           <Button
                             key={index}
                             variant="outline"

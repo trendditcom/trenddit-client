@@ -4,6 +4,7 @@
  */
 
 import { z } from 'zod';
+import { openai } from '@/lib/ai/openai';
 
 // Data Source Types
 export const DataSourceSchema = z.object({
@@ -292,25 +293,84 @@ export class DataIngestionEngine {
   }
 
   private async processRawData(raw: RawIntelligence): Promise<ProcessedIntelligence> {
-    // Enhanced AI processing would go here
-    // For now, return processed structure with mock AI analysis
-    
-    const processed: ProcessedIntelligence = {
-      id: `${raw.sourceId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      type: this.inferIntelligenceType(raw),
-      title: this.extractTitle(raw.rawData),
-      summary: this.extractSummary(raw.rawData),
-      sentiment: this.analyzeSentiment(raw.rawData),
-      confidence: raw.reliability,
-      sources: [raw.sourceId],
-      entities: this.extractEntities(raw.rawData),
-      tags: this.extractTags(raw.rawData),
-      impact_score: this.calculateImpactScore(raw.rawData, raw.reliability),
-      processed_at: new Date(),
-      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-    };
+    try {
+      // Use AI to comprehensively analyze the raw intelligence data
+      const analysisPrompt = `Analyze this intelligence data from ${raw.sourceId} (${raw.sourceType} source):
 
-    return processed;
+DATA TO ANALYZE:
+${JSON.stringify(raw.rawData, null, 2)}
+
+SOURCE RELIABILITY: ${raw.reliability}
+
+ANALYSIS REQUIREMENTS:
+1. Classify the intelligence type (trend, competitor, market_sentiment, regulatory, technical)
+2. Extract a clear, concise title (max 100 chars)
+3. Generate a comprehensive summary (2-3 sentences)
+4. Determine sentiment (positive, neutral, negative)
+5. Identify key entities mentioned (companies, technologies, people)
+6. Extract relevant tags for categorization
+7. Calculate business impact score (1-10) considering market relevance and potential disruption
+8. Assess overall confidence in the analysis (0.0-1.0)
+
+Respond in JSON format:
+{
+  "type": "trend|competitor|market_sentiment|regulatory|technical",
+  "title": "concise title",
+  "summary": "comprehensive summary",
+  "sentiment": "positive|neutral|negative",
+  "entities": ["entity1", "entity2", "entity3"],
+  "tags": ["tag1", "tag2", "tag3"],
+  "impact_score": 7,
+  "confidence": 0.85
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert intelligence analyst specializing in technology and market trends. Analyze data comprehensively and objectively.'
+          },
+          {
+            role: 'user',
+            content: analysisPrompt
+          }
+        ],
+        temperature: 0.2,
+        max_tokens: 1500,
+      });
+
+      // Parse AI response with intelligent fallbacks
+      let aiAnalysis;
+      try {
+        const content = response.choices[0].message.content || '{}';
+        aiAnalysis = JSON.parse(content);
+      } catch (parseError) {
+        console.error('Failed to parse AI analysis, using fallback:', parseError);
+        aiAnalysis = this.generateFallbackAnalysis(raw);
+      }
+
+      // Create processed intelligence with AI analysis
+      const processed: ProcessedIntelligence = {
+        id: `${raw.sourceId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type: this.validateIntelligenceType(aiAnalysis.type) || this.inferIntelligenceType(raw),
+        title: aiAnalysis.title || this.extractTitle(raw.rawData),
+        summary: aiAnalysis.summary || this.extractSummary(raw.rawData),
+        sentiment: this.validateSentiment(aiAnalysis.sentiment) || this.analyzeSentiment(raw.rawData),
+        confidence: Math.min(raw.reliability, aiAnalysis.confidence || 0.7),
+        sources: [raw.sourceId],
+        entities: Array.isArray(aiAnalysis.entities) ? aiAnalysis.entities.slice(0, 5) : this.extractEntities(raw.rawData),
+        tags: Array.isArray(aiAnalysis.tags) ? aiAnalysis.tags.slice(0, 5) : this.extractTags(raw.rawData),
+        impact_score: this.validateImpactScore(aiAnalysis.impact_score) || this.calculateImpactScore(raw.rawData, raw.reliability),
+        processed_at: new Date(),
+        expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+      };
+
+      return processed;
+    } catch (error) {
+      console.error('AI processing failed, using fallback analysis:', error);
+      return this.generateFallbackProcessedIntelligence(raw);
+    }
   }
 
   private checkRateLimit(sourceId: string, limitPerHour: number): boolean {
@@ -430,6 +490,53 @@ export class DataIngestionEngine {
     if (content.includes('regulation') || content.includes('policy')) score += 2;
     
     return Math.min(10, Math.max(1, Math.round(score * reliability)));
+  }
+
+  // AI Processing Helper Methods
+
+  private validateIntelligenceType(type: string): ProcessedIntelligence['type'] | null {
+    const validTypes: ProcessedIntelligence['type'][] = ['trend', 'competitor', 'market_sentiment', 'regulatory', 'technical'];
+    return validTypes.includes(type as ProcessedIntelligence['type']) ? type as ProcessedIntelligence['type'] : null;
+  }
+
+  private validateSentiment(sentiment: string): ProcessedIntelligence['sentiment'] | null {
+    const validSentiments: ProcessedIntelligence['sentiment'][] = ['positive', 'neutral', 'negative'];
+    return validSentiments.includes(sentiment as ProcessedIntelligence['sentiment']) ? sentiment as ProcessedIntelligence['sentiment'] : null;
+  }
+
+  private validateImpactScore(score: any): number | null {
+    const numScore = typeof score === 'number' ? score : parseInt(score);
+    return !isNaN(numScore) && numScore >= 1 && numScore <= 10 ? numScore : null;
+  }
+
+  private generateFallbackAnalysis(raw: RawIntelligence): any {
+    return {
+      type: this.inferIntelligenceType(raw),
+      title: this.extractTitle(raw.rawData),
+      summary: this.extractSummary(raw.rawData),
+      sentiment: this.analyzeSentiment(raw.rawData),
+      entities: this.extractEntities(raw.rawData),
+      tags: this.extractTags(raw.rawData),
+      impact_score: this.calculateImpactScore(raw.rawData, raw.reliability),
+      confidence: raw.reliability * 0.8, // Reduced confidence for fallback
+    };
+  }
+
+  private generateFallbackProcessedIntelligence(raw: RawIntelligence): ProcessedIntelligence {
+    return {
+      id: `${raw.sourceId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: this.inferIntelligenceType(raw),
+      title: this.extractTitle(raw.rawData),
+      summary: this.extractSummary(raw.rawData),
+      sentiment: this.analyzeSentiment(raw.rawData),
+      confidence: raw.reliability * 0.7, // Reduced confidence for complete fallback
+      sources: [raw.sourceId],
+      entities: this.extractEntities(raw.rawData),
+      tags: this.extractTags(raw.rawData),
+      impact_score: this.calculateImpactScore(raw.rawData, raw.reliability),
+      processed_at: new Date(),
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+    };
   }
 }
 
