@@ -1,0 +1,1 @@
+Update the .claude/specs/plan.md with a changelog of features completed and next steps. Update README.md with user evaluation guide for features complete. 
