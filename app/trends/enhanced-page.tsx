@@ -1,3 +1,8 @@
+/**
+ * Enhanced Unified Trends Page
+ * Merges Trends and Intelligence features into one comprehensive experience
+ */
+
 'use client';
 
 import { useState } from 'react';
@@ -37,7 +42,7 @@ interface CompanyProfile {
 
 type ViewMode = 'cards' | 'rows';
 
-export default function TrendsPage() {
+export default function EnhancedTrendsPage() {
   const router = useRouter();
   
   // View and UI state

@@ -21,14 +21,19 @@ interface IntelligentTrendCardProps {
     techMaturity: 'low' | 'medium' | 'high';
   };
   onConversationStart?: (trendId: string) => void;
+  onGenerateNeeds?: (trendId: string) => void;
+  onAnalyzeTrend?: (trendId: string) => void;
+  isAnalyzing?: boolean;
 }
 
 export function IntelligentTrendCard({ 
   trend, 
   companyProfile,
-  onConversationStart 
+  onConversationStart,
+  onGenerateNeeds,
+  onAnalyzeTrend,
+  isAnalyzing = false
 }: IntelligentTrendCardProps) {
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showIntelligence, setShowIntelligence] = useState(false);
   const [intelligence, setIntelligence] = useState<any>(null);
 
@@ -36,18 +41,15 @@ export function IntelligentTrendCard({
     onSuccess: (data) => {
       setIntelligence(data);
       setShowIntelligence(true);
-      setIsAnalyzing(false);
     },
     onError: (error) => {
       console.error('Relevance prediction failed:', error);
-      setIsAnalyzing(false);
     },
   });
 
   const handleIntelligentAnalysis = async () => {
     if (!companyProfile) return;
     
-    setIsAnalyzing(true);
     predictRelevance.mutate({
       companyProfile,
       timeHorizon: '6months',
@@ -181,6 +183,23 @@ export function IntelligentTrendCard({
               variant="outline"
               size="sm"
               onClick={handleIntelligentAnalysis}
+              disabled={predictRelevance.isPending}
+              className="flex items-center gap-2"
+            >
+              {predictRelevance.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <TrendingUp className="h-4 w-4" />
+              )}
+              AI Analysis
+            </Button>
+          )}
+
+          {onAnalyzeTrend && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onAnalyzeTrend(trend.id)}
               disabled={isAnalyzing}
               className="flex items-center gap-2"
             >
@@ -189,7 +208,7 @@ export function IntelligentTrendCard({
               ) : (
                 <TrendingUp className="h-4 w-4" />
               )}
-              AI Analysis
+              Analyze Impact
             </Button>
           )}
 
@@ -206,8 +225,12 @@ export function IntelligentTrendCard({
           <Button
             size="sm"
             onClick={() => {
-              // Navigate to need discovery with trend context
-              window.location.href = `/needs?trendId=${trend.id}`;
+              if (onGenerateNeeds) {
+                onGenerateNeeds(trend.id);
+              } else {
+                // Fallback to navigation for backward compatibility
+                window.location.href = `/needs?trendId=${trend.id}`;
+              }
             }}
           >
             Generate Needs
