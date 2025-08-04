@@ -49,26 +49,25 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="relative rounded-lg border border-gray-200 bg-white p-6 shadow-sm opacity-50">
-            <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gray-400 text-white">
+          <div className="relative rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500 text-white">
               2
             </div>
             <h3 className="text-lg font-medium text-gray-900">Need Discovery</h3>
             <p className="mt-2 text-sm text-gray-500">
               Identify specific business needs based on AI trends and your enterprise context.
             </p>
-            <span className="absolute top-2 right-2 text-xs bg-gray-100 px-2 py-1 rounded">Coming Soon</span>
           </div>
 
-          <div className="relative rounded-lg border border-gray-200 bg-white p-6 shadow-sm opacity-50">
-            <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gray-400 text-white">
+          <div className="relative rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+            <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-500 text-white">
               3
             </div>
             <h3 className="text-lg font-medium text-gray-900">Solution Matching</h3>
             <p className="mt-2 text-sm text-gray-500">
-              Get AI-powered recommendations for build vs buy vs partner decisions.
+              Get AI-powered recommendations for build vs buy vs partner decisions with ROI analysis.
             </p>
-            <span className="absolute top-2 right-2 text-xs bg-gray-100 px-2 py-1 rounded">Coming Soon</span>
+            <span className="absolute top-2 right-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded">New!</span>
           </div>
 
           <div className="relative rounded-lg border border-gray-200 bg-white p-6 shadow-sm opacity-50">

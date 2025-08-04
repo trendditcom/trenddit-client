@@ -61,6 +61,14 @@ export function PrioritizationStep({ onComplete, onPrevious }: PrioritizationSte
     onComplete();
   };
 
+  const handleGenerateSolutions = () => {
+    completeStep('prioritization');
+    const firstSelectedNeed = needs.find(need => selectedNeeds.includes(need.id));
+    if (firstSelectedNeed) {
+      window.location.href = `/solutions?needId=${firstSelectedNeed.id}&needTitle=${encodeURIComponent(firstSelectedNeed.title)}&needDescription=${encodeURIComponent(firstSelectedNeed.description)}`;
+    }
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'critical': return 'bg-red-100 text-red-800 border-red-200';
@@ -285,13 +293,24 @@ export function PrioritizationStep({ onComplete, onPrevious }: PrioritizationSte
         >
           Previous
         </button>
-        <button
-          type="button"
-          onClick={handleComplete}
-          className="px-6 py-2 text-sm font-medium bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-        >
-          Complete Need Discovery
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleComplete}
+            className="px-6 py-2 text-sm font-medium bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          >
+            Complete Discovery
+          </button>
+          {selectedNeeds.length > 0 && (
+            <button
+              type="button"
+              onClick={handleGenerateSolutions}
+              className="px-6 py-2 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-2"
+            >
+              Generate Solutions →
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
