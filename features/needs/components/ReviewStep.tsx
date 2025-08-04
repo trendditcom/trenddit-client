@@ -1,8 +1,10 @@
 'use client';
 
 import { useNeedsStore } from '../stores/needsStore';
-import { mockTrends } from '@/features/trends/data/mockTrends';
+import { getTrendById } from '@/features/trends/services/trend-service';
 import { clsx } from 'clsx';
+import { useEffect, useState } from 'react';
+import { Trend } from '@/features/trends/types/trend';
 
 interface ReviewStepProps {
   onNext: () => void;
@@ -12,11 +14,28 @@ interface ReviewStepProps {
 export function ReviewStep({ onNext, onPrevious }: ReviewStepProps) {
   const { wizard, completeStep } = useNeedsStore();
   const { companyContext, selectedTrendId } = wizard;
+  const [selectedTrend, setSelectedTrend] = useState<Trend | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Find the selected trend
-  const selectedTrend = selectedTrendId 
-    ? mockTrends.find(t => t.id === selectedTrendId)
-    : null;
+  // Fetch the selected trend dynamically
+  useEffect(() => {
+    async function fetchTrend() {
+      if (!selectedTrendId) return;
+      
+      setLoading(true);
+      try {
+        const trend = await getTrendById(selectedTrendId);
+        setSelectedTrend(trend);
+      } catch (error) {
+        console.error('Error fetching trend:', error);
+        setSelectedTrend(null);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchTrend();
+  }, [selectedTrendId]);
 
   const handleContinue = () => {
     completeStep('review');

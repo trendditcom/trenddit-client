@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { publicProcedure, protectedProcedure, router } from '@/server/trpc';
 import { TrendCategorySchema } from '../types/trend';
-import { mockTrends } from '../data/mockTrends';
+import { generateDynamicTrends, getDynamicTrendById } from './trend-generator';
 import { analyzeTrend } from '@/lib/ai/openai';
 import { events, EVENTS } from '@/lib/events';
 
@@ -16,15 +16,11 @@ export const trendsRouter = router({
     )
     .query(async ({ input }) => {
       try {
-        // For MVP, return mock data
-        let trends = mockTrends;
-        
-        if (input.category) {
-          trends = trends.filter((t) => t.category === input.category);
-        }
-        
-        return trends.slice(0, input.limit);
+        // Generate fresh, dynamic trends using AI
+        const trends = await generateDynamicTrends(input.category, input.limit);
+        return trends;
       } catch (error) {
+        console.error('Failed to generate dynamic trends:', error);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Failed to fetch trends',
@@ -40,8 +36,8 @@ export const trendsRouter = router({
     )
     .mutation(async ({ input }) => {
       try {
-        // Find the trend
-        const trend = mockTrends.find((t) => t.id === input.trendId);
+        // Get the trend dynamically
+        const trend = await getDynamicTrendById(input.trendId);
         
         if (!trend) {
           throw new TRPCError({

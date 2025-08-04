@@ -5,14 +5,14 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/lib/ui/card';
 import { Button } from '@/lib/ui/button';
 import { Badge } from '@/lib/ui/badge';
 import { Input } from '@/lib/ui/input';
 import { trpc } from '@/lib/trpc/client';
 import { IntelligentTrendCard } from '@/features/market-intelligence/components/IntelligentTrendCard';
-import { mockTrends } from '@/features/trends/data/mockTrends';
+// Dynamic trend imports happen at runtime
 import { 
   Brain, 
   TrendingUp, 
@@ -28,6 +28,67 @@ interface CompanyProfile {
   industry: string;
   size: 'startup' | 'small' | 'medium' | 'enterprise';
   techMaturity: 'low' | 'medium' | 'high';
+}
+
+// Dynamic Trends Section Component
+function DynamicTrendsSection({ 
+  companyProfile, 
+  onConversationStart 
+}: { 
+  companyProfile: CompanyProfile;
+  onConversationStart: (trendId: string) => void;
+}) {
+  const [trends, setTrends] = useState<Array<{
+    id: string;
+    title: string;
+    summary: string;
+    category: "consumer" | "competition" | "economy" | "regulation";
+    impact_score: number;
+    source: string;
+    source_url?: string;
+    created_at: string | Date;
+    updated_at: string | Date;
+  }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadTrends() {
+      try {
+        const { getTrendsForDisplay } = await import('@/features/trends/services/trend-service');
+        const dynamicTrends = await getTrendsForDisplay(5);
+        setTrends(dynamicTrends);
+      } catch (error) {
+        console.error('Error loading dynamic trends:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadTrends();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="h-24 bg-gray-100 rounded-lg animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {trends.map((trend) => (
+        <IntelligentTrendCard
+          key={trend.id}
+          trend={trend}
+          companyProfile={companyProfile}
+          onConversationStart={onConversationStart}
+        />
+      ))}
+    </div>
+  );
 }
 
 export default function IntelligencePage() {
@@ -53,26 +114,31 @@ export default function IntelligencePage() {
   // Market synthesis mutation
   const synthesizeIntelligence = trpc.intelligence.synthesizeMarketIntelligence.useMutation();
 
-  const handleConversationStart = (trendId: string) => {
-    const trend = mockTrends.find(t => t.id === trendId);
-    if (trend) {
-      setCurrentTopic(trend.title);
-      setConversationMode(true);
-      
-      // Generate initial conversational insights
-      generateInsights.mutate({
-        conversationContext: {
-          previousMessages: [],
-          currentTopic: trend.title,
-          userQuestions: [`Tell me about ${trend.title} and its relevance to my company`],
-        },
-        userRole: 'cto',
-        companyContext: {
-          industry: companyProfile.industry,
-          size: companyProfile.size,
-          challenges: ['scalability', 'compliance', 'talent'],
-        },
-      });
+  const handleConversationStart = async (trendId: string) => {
+    try {
+      const { getTrendById } = await import('@/features/trends/services/trend-service');
+      const trend = await getTrendById(trendId);
+      if (trend) {
+        setCurrentTopic(trend.title);
+        setConversationMode(true);
+        
+        // Generate initial conversational insights
+        generateInsights.mutate({
+          conversationContext: {
+            previousMessages: [],
+            currentTopic: trend.title,
+            userQuestions: [`Tell me about ${trend.title} and its relevance to my company`],
+          },
+          userRole: 'cto',
+          companyContext: {
+            industry: companyProfile.industry,
+            size: companyProfile.size,
+            challenges: ['scalability', 'compliance', 'talent'],
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error starting conversation:', error);
     }
   };
 
@@ -261,16 +327,10 @@ export default function IntelligencePage() {
                 AI-Enhanced Trend Intelligence
               </h2>
               
-              <div className="space-y-4">
-                {mockTrends.slice(0, 5).map((trend) => (
-                  <IntelligentTrendCard
-                    key={trend.id}
-                    trend={trend}
-                    companyProfile={companyProfile}
-                    onConversationStart={handleConversationStart}
-                  />
-                ))}
-              </div>
+              <DynamicTrendsSection 
+                companyProfile={companyProfile}
+                onConversationStart={handleConversationStart}
+              />
             </div>
           </div>
 

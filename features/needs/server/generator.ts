@@ -1,5 +1,5 @@
 import { CompanyContext, Need, NeedCategory, NeedPriority } from '../types/need';
-import { mockTrends } from '@/features/trends/data/mockTrends';
+import { getTrendById } from '@/features/trends/services/trend-service';
 import { generateCompletion } from '@/lib/ai/openai';
 
 /**
@@ -10,8 +10,8 @@ export async function generateNeedsFromTrend(
   companyContext: CompanyContext,
   maxNeeds: number = 5
 ): Promise<Need[]> {
-  // Find the trend
-  const trend = mockTrends.find(t => t.id === trendId);
+  // Get the trend dynamically
+  const trend = await getTrendById(trendId);
   if (!trend) {
     throw new Error(`Trend not found: ${trendId}`);
   }
@@ -25,16 +25,16 @@ export async function generateNeedsFromTrend(
     
     // Ensure we have at least one need
     if (needs.length === 0) {
-      console.warn('AI generated zero needs, falling back to templates');
-      return generateFallbackNeeds(trend, companyContext, maxNeeds);
+      console.warn('AI generated zero needs, falling back to dynamic generation');
+      return await generateDynamicFallbackNeeds(trend, companyContext, maxNeeds);
     }
     
     return needs;
   } catch (error) {
     console.error('AI need generation failed:', error);
-    // Fallback to template-based generation
-    console.log('Using fallback template-based need generation');
-    return generateFallbackNeeds(trend, companyContext, maxNeeds);
+    // Fallback to dynamic generation instead of templates
+    console.log('Using dynamic fallback need generation');
+    return await generateDynamicFallbackNeeds(trend, companyContext, maxNeeds);
   }
 }
 
@@ -143,80 +143,100 @@ function parseNeedsFromCompletion(completion: string, trendId: string, companyId
 }
 
 /**
- * Fallback need generation using templates when AI fails
+ * Dynamic fallback need generation when primary AI fails
+ * Uses a simplified AI prompt to ensure we never return hardcoded templates
  */
-function generateFallbackNeeds(trend: any, companyContext: CompanyContext, maxNeeds: number): Need[] {
-  const templates = getNeedTemplates(trend.category, companyContext.industry);
-  const selectedTemplates = templates.slice(0, maxNeeds);
+async function generateDynamicFallbackNeeds(trend: any, companyContext: CompanyContext, maxNeeds: number): Promise<Need[]> {
+  const currentYear = new Date().getFullYear();
   
-  return selectedTemplates.map((template, index) => ({
-    id: `fallback_need_${trend.id}_${Date.now()}_${index}`,
-    trendId: trend.id,
-    companyId: companyContext.id!,
-    title: template.title.replace('{company}', companyContext.name),
-    description: template.description.replace('{company}', companyContext.name),
-    category: template.category,
-    priority: template.priority,
-    impactScore: template.impactScore,
-    effortScore: template.effortScore,
-    urgencyScore: template.urgencyScore,
-    stakeholders: template.stakeholders,
-    businessValue: template.businessValue,
-    risks: template.risks,
-    successMetrics: template.successMetrics,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }));
+  const fallbackPrompt = `Generate ${maxNeeds} business needs for this company based on this AI trend. Current year: ${currentYear}.
+
+TREND: ${trend.title}
+CATEGORY: ${trend.category}
+SUMMARY: ${trend.summary}
+
+COMPANY:
+- Name: ${companyContext.name}
+- Industry: ${companyContext.industry}
+- Size: ${companyContext.size}
+- Challenges: ${companyContext.currentChallenges?.join(', ') || 'Standard business challenges'}
+- Goals: ${companyContext.primaryGoals?.join(', ') || 'Growth and efficiency'}
+
+Generate practical, specific needs that this company should address given this trend.
+
+Return as JSON:
+{
+  "needs": [
+    {
+      "title": "Specific need title",
+      "description": "2-3 sentence description",
+      "category": "automation|data_insights|customer_experience|operational_efficiency|competitive_advantage|risk_management|cost_reduction|innovation",
+      "priority": "low|medium|high|critical",
+      "impactScore": 7,
+      "effortScore": 5,
+      "urgencyScore": 6,
+      "stakeholders": ["team1", "team2"],
+      "businessValue": "Expected business value statement",
+      "risks": ["risk1", "risk2"],
+      "successMetrics": ["metric1", "metric2"]
+    }
+  ]
+}`;
+
+  try {
+    const completion = await generateCompletion(fallbackPrompt);
+    return parseNeedsFromCompletion(completion, trend.id, companyContext.id!);
+  } catch (error) {
+    console.error('Dynamic fallback needs generation failed:', error);
+    
+    // Absolute final fallback - generate minimal dynamic needs
+    return generateMinimalDynamicNeeds(trend, companyContext, maxNeeds);
+  }
 }
 
 /**
- * Get need templates based on trend category and industry
+ * Generate minimal but dynamic needs as absolute last resort
  */
-function getNeedTemplates(trendCategory: string, industry: string) {
-  const baseTemplates = [
+function generateMinimalDynamicNeeds(trend: any, companyContext: CompanyContext, maxNeeds: number): Need[] {
+  const currentYear = new Date().getFullYear();
+  const baseId = Date.now();
+  
+  const needTypes = [
     {
-      title: "Implement AI-powered automation for core processes",
-      description: "Leverage AI automation to streamline repetitive tasks and improve operational efficiency across key business processes.",
-      category: "automation" as NeedCategory,
-      priority: "high" as NeedPriority,
-      impactScore: 8,
-      effortScore: 6,
-      urgencyScore: 7,
-      stakeholders: ["Operations", "IT", "Management"],
-      businessValue: "Reduce operational costs by 20-30% while improving accuracy",
-      risks: ["Implementation complexity", "Staff adaptation challenges"],
-      successMetrics: ["Cost reduction percentage", "Process completion time", "Error reduction rate"]
+      category: 'automation' as NeedCategory,
+      title: `Implement ${trend.title} Automation`,
+      description: `Leverage the opportunities from ${trend.title} to automate key processes at ${companyContext.name}, improving efficiency and reducing manual work in ${currentYear}.`
     },
     {
-      title: "Develop AI-driven customer insights platform", 
-      description: "Create a comprehensive system to analyze customer data and behavior patterns for better decision making.",
-      category: "data_insights" as NeedCategory,
-      priority: "medium" as NeedPriority,
-      impactScore: 7,
-      effortScore: 5,
-      urgencyScore: 6,
-      stakeholders: ["Marketing", "Sales", "Data Analytics"],
-      businessValue: "Improve customer targeting and retention by 15-25%",
-      risks: ["Data privacy concerns", "Integration challenges"],
-      successMetrics: ["Customer retention rate", "Conversion improvement", "Data accuracy score"]
+      category: 'data_insights' as NeedCategory,
+      title: `Develop ${trend.title} Analytics`,
+      description: `Create analytics capabilities to understand the impact of ${trend.title} on ${companyContext.name}'s ${companyContext.industry} operations and make data-driven decisions.`
     },
     {
-      title: "Enhance customer experience with AI personalization",
-      description: "Implement AI-powered personalization to deliver tailored experiences across all customer touchpoints.",
-      category: "customer_experience" as NeedCategory,
-      priority: "high" as NeedPriority,
-      impactScore: 9,
-      effortScore: 7,
-      urgencyScore: 8,
-      stakeholders: ["Customer Success", "Product", "Marketing"],
-      businessValue: "Increase customer satisfaction and lifetime value by 20%",
-      risks: ["Privacy compliance", "Technology complexity"],
-      successMetrics: ["Customer satisfaction score", "Engagement rate", "Revenue per customer"]
+      category: 'competitive_advantage' as NeedCategory,
+      title: `Leverage ${trend.title} for Competitive Edge`,
+      description: `Position ${companyContext.name} ahead of competitors by strategically adopting capabilities related to ${trend.title} in the ${companyContext.industry} market.`
     }
   ];
 
-  // Industry-specific customizations could be added here
-  return baseTemplates;
+  return needTypes.slice(0, maxNeeds).map((needType, index) => ({
+    id: `dynamic_need_${baseId}_${index}`,
+    trendId: trend.id,
+    companyId: companyContext.id!,
+    title: needType.title,
+    description: needType.description,
+    category: needType.category,
+    priority: 'medium' as NeedPriority,
+    impactScore: 7,
+    effortScore: 6,
+    urgencyScore: 6,
+    stakeholders: ['Management', 'IT', 'Operations'],
+    businessValue: `Expected to improve ${companyContext.name}'s competitive position and operational efficiency`,
+    risks: ['Implementation complexity', 'Change management', 'Resource allocation'],
+    successMetrics: ['Performance improvement', 'Cost reduction', 'User adoption rate'],
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }));
 }
 
 /**
