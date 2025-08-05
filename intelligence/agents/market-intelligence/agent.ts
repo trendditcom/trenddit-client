@@ -451,6 +451,13 @@ Respond in JSON format:
 
   private async performChainOfThoughtAnalysis(prompt: string): Promise<string> {
     try {
+      // Check for OpenAI API key in environment variables (project env first, then user env)
+      const apiKey = process.env.OPENAI_API_KEY;
+      
+      if (!apiKey || apiKey === 'sk-your-openai-key' || apiKey.startsWith('sk-your-')) {
+        throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY in .env.local or as a user environment variable.');
+      }
+
       const response = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: [
@@ -473,7 +480,8 @@ Respond in JSON format:
       return response.choices[0].message.content || 'Analysis failed';
     } catch (error) {
       console.error('Chain-of-thought analysis failed:', error);
-      return 'Market intelligence analysis temporarily unavailable';
+      // Throw the actual error instead of returning fallback data
+      throw error;
     }
   }
 

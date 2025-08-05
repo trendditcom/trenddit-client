@@ -88,6 +88,8 @@ export async function getTrendById(trendId: string): Promise<Trend | null> {
     if (cachedData) {
       const trend = cachedData.trends.find(t => t.id === trendId);
       if (trend) {
+        // Update memory cache with found data
+        masterTrendsCache = cachedData;
         return trend;
       }
     }
@@ -99,8 +101,9 @@ export async function getTrendById(trendId: string): Promise<Trend | null> {
       const trend = await getDynamicTrendById(trendId);
       return trend;
     } else {
-      // On client-side, trend should be fetched via tRPC
-      return null;
+      // On client-side, if trend not found in cache, throw error
+      // This should not happen if trends are properly loaded
+      throw new Error(`Trend with ID '${trendId}' not found in cache. Ensure trends are loaded first.`);
     }
   } catch (error) {
     console.error('Error fetching trend by ID:', error);

@@ -237,6 +237,21 @@ NEXT_PUBLIC_POSTHOG_HOST=
 NEXT_PUBLIC_FEATURE_FLAGS_ENABLED=true
 ```
 
+### OpenAI API Key Configuration
+
+The system uses `OPENAI_API_KEY` from:
+1. `.env.local` file (project-specific) - preferred for development
+2. User environment variables (global) - preferred for production/deployment
+
+To set a user environment variable:
+```bash
+# macOS/Linux
+export OPENAI_API_KEY=sk-your-actual-openai-key
+
+# Windows
+set OPENAI_API_KEY=sk-your-actual-openai-key
+```
+
 ## Debugging Tips
 
 ### Common Issues
@@ -298,6 +313,24 @@ Return top 3 matches with confidence scores.
 - **FOCUS** on user value, not code perfection
 - **MEASURE** everything - usage, errors, performance
 - **TALK** to users daily - their feedback drives development
+
+## Error Handling Rules
+
+### API Key Management
+- **ALWAYS** check for API keys in project `.env.local` first, then user environment variables
+- **NEVER** use hardcoded fallback data when API keys are missing
+- **THROW** clear, actionable errors when API services are unavailable
+
+### Fallback Strategy
+- **NEVER** create mock or hardcoded fallback responses
+- **ALWAYS** surface actual errors to users with clear instructions
+- **PROVIDE** actionable error messages (e.g., "Set OPENAI_API_KEY in .env.local or environment")
+- **FAIL FAST** - let users know exactly what needs to be configured
+
+### Error Messages
+- Include timestamp and context in error messages
+- Provide copy functionality for easy error reporting
+- Show clear next steps for resolution
 
 ## Questions or Issues?
 - Check `.claude/specs/` for detailed documentation

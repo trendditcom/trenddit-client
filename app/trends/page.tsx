@@ -170,9 +170,10 @@ export default function TrendsPage() {
   }, [allTrends, selectedCategory, searchQuery]);
 
   // Event handlers
-  const handleConversationStart = async (trendId: string) => {
+  const handleConversationStart = (trendId: string) => {
     try {
-      const trend = await utils.trends.getById.fetch({ trendId });
+      // Find trend from already loaded data instead of making API call
+      const trend = allTrends?.find(t => t.id === trendId);
       
       if (trend) {
         setCurrentTopic(trend.title);
@@ -194,9 +195,13 @@ export default function TrendsPage() {
             challenges: ['scalability', 'compliance', 'talent'],
           },
         });
+      } else {
+        console.error('Trend not found in loaded data:', trendId);
+        setConversationHistory(['Error: Trend not found. Please refresh the page and try again.']);
       }
     } catch (error) {
       console.error('Error starting conversation:', error);
+      setConversationHistory(['Error: Failed to start conversation. Please try again.']);
     }
   };
 

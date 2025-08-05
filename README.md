@@ -178,6 +178,75 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 6. Push to the branch (`git push origin feature/amazing-feature`)
 7. Open a Pull Request
 
+## 🧪 User Evaluation Guide
+
+### Features Complete & Ready for Testing
+
+**✅ AI-Powered Trend Intelligence**
+- Browse 20+ dynamically generated trends with real-time AI analysis
+- Switch between Cards view (visual) and Rows view (detailed)
+- Filter by category: Consumer, Competition, Economy, Regulation
+- Search trends with instant client-side filtering
+
+**✅ Interactive Chat Intelligence**
+- Click "Chat" on any trend card to start AI conversation
+- Get role-specific insights (CTO perspective)
+- Follow-up questions generated automatically
+- Context-aware conversations about market implications
+
+**✅ Live Intelligence Dashboard**
+- Real-time market signals with confidence scores
+- AI agent status and processing metrics
+- Market synthesis with natural language queries
+- Industry-specific intelligence signals
+
+**✅ Company Profile Personalization**
+- Configure industry, company size, and tech maturity
+- AI generates personalized trend relevance
+- Regenerate trends based on company profile
+- Domain-specific market intelligence
+
+**✅ Business Need Discovery**
+- Generate actionable business needs from trends
+- Priority scoring and complexity assessment
+- Stakeholder impact analysis
+- Implementation timeline estimates
+
+### How to Test
+
+1. **Setup** (Required for AI features):
+   ```bash
+   export OPENAI_API_KEY=your-openai-api-key
+   npm install && npm run dev
+   ```
+
+2. **Trend Intelligence** (`/trends`):
+   - Toggle between Cards/Rows view
+   - Filter by different categories
+   - Search for specific trends
+   - Click "Chat" to start AI conversations
+
+3. **Need Discovery** (`/needs`):
+   - Generate needs from trends
+   - Review priority and complexity scores
+   - Explore stakeholder impacts
+
+4. **Solution Matching** (`/solutions`):
+   - Find build vs buy vs partner recommendations
+   - Review ROI and timeline estimates
+   - Explore vendor and technology options
+
+### Expected Behavior
+
+**✅ With OpenAI API Key**: Full AI functionality with real insights and conversations
+**⚠️ Without API Key**: Clear error messages with setup instructions (no mock data)
+
+### Known Limitations
+
+- AI responses may take 1-3 seconds for complex analysis
+- Requires valid OpenAI API key for full functionality
+- Best experience on desktop/tablet (responsive design implemented)
+
 ## 📊 Performance
 
 - **Page Load**: < 2 seconds with cached data
