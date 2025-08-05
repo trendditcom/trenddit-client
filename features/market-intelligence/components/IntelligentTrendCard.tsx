@@ -108,7 +108,7 @@ export function IntelligentTrendCard({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <p className="text-sm text-gray-600 leading-relaxed">
+        <p className="text-sm text-gray-800 leading-relaxed">
           {trend.summary}
         </p>
 
@@ -131,11 +131,11 @@ export function IntelligentTrendCard({
                   <span className="text-sm font-medium text-gray-900">
                     {relevantTrend.timelineImpact}
                   </span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-700">
                     {Math.round(relevantTrend.relevanceScore * 100)}% match
                   </span>
                 </div>
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-gray-800">
                   {relevantTrend.reasoning}
                 </p>
               </div>
@@ -154,13 +154,13 @@ export function IntelligentTrendCard({
                         <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
                           Step {step.step}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-700">
                           {Math.round(step.confidence * 100)}% confidence
                         </span>
                       </div>
-                      <p className="text-xs text-gray-700">{step.description}</p>
+                      <p className="text-xs text-gray-800">{step.description}</p>
                       {step.evidence.length > 0 && (
-                        <ul className="text-xs text-gray-600 pl-4">
+                        <ul className="text-xs text-gray-700 pl-4">
                           {step.evidence.map((evidence: string, evidenceIndex: number) => (
                             <li key={evidenceIndex} className="list-disc">
                               {evidence}
@@ -240,7 +240,7 @@ export function IntelligentTrendCard({
         </div>
 
         {/* Metadata */}
-        <div className="text-xs text-gray-500 flex items-center justify-between pt-2 border-t border-gray-100">
+        <div className="text-xs text-gray-700 flex items-center justify-between pt-2 border-t border-gray-100">
           <span>
             Source: <a 
               href={trend.source_url || `https://google.com/search?q=${encodeURIComponent(trend.source)}`}

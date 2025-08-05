@@ -18,7 +18,7 @@ const categories: { value: TrendCategory | null; label: string; color: string }[
 
 export function TrendFilters({ selectedCategory, onCategoryChange }: TrendFiltersProps) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-nowrap gap-2">
       {categories.map((category) => (
         <button
           key={category.label}

@@ -98,7 +98,7 @@ export function TrendRowView({
     return (
       <div className="text-center py-12">
         <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-500">No trends found for the selected criteria</p>
+        <p className="text-gray-700 font-medium">No trends found for the selected criteria</p>
       </div>
     );
   }
@@ -137,7 +137,7 @@ export function TrendRowView({
                   <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
                     {trend.title}
                   </h3>
-                  <p className="text-sm text-gray-600 line-clamp-2">
+                  <p className="text-sm text-gray-800 line-clamp-2">
                     {trend.summary}
                   </p>
                 </div>
@@ -176,7 +176,7 @@ export function TrendRowView({
                 </div>
 
                 {/* Metadata - Col 9-10 */}
-                <div className="col-span-2 text-xs text-gray-500">
+                <div className="col-span-2 text-xs text-gray-700">
                   <div className="flex items-center gap-1 mb-1">
                     <Calendar className="h-3 w-3" />
                     {new Date(trend.created_at).toLocaleDateString()}
@@ -219,7 +219,7 @@ export function TrendRowView({
                   {/* Full Summary */}
                   <div>
                     <h4 className="text-sm font-medium text-gray-900 mb-2">Detailed Analysis</h4>
-                    <p className="text-sm text-gray-700 leading-relaxed">
+                    <p className="text-sm text-gray-800 leading-relaxed">
                       {trend.summary}
                     </p>
                   </div>
@@ -243,11 +243,11 @@ export function TrendRowView({
                             <span className="text-sm font-medium text-gray-900">
                               {relevantTrend.timelineImpact}
                             </span>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-gray-700">
                               {Math.round(relevantTrend.relevanceScore * 100)}% match
                             </span>
                           </div>
-                          <p className="text-sm text-gray-700">
+                          <p className="text-sm text-gray-800">
                             {relevantTrend.reasoning}
                           </p>
                         </div>
@@ -266,13 +266,13 @@ export function TrendRowView({
                                   <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
                                     Step {step.step}
                                   </span>
-                                  <span className="text-xs text-gray-500">
+                                  <span className="text-xs text-gray-700">
                                     {Math.round(step.confidence * 100)}% confidence
                                   </span>
                                 </div>
-                                <p className="text-xs text-gray-700">{step.description}</p>
+                                <p className="text-xs text-gray-800">{step.description}</p>
                                 {step.evidence.length > 0 && (
-                                  <ul className="text-xs text-gray-600 pl-4">
+                                  <ul className="text-xs text-gray-700 pl-4">
                                     {step.evidence.map((evidence: string, evidenceIndex: number) => (
                                       <li key={evidenceIndex} className="list-disc">
                                         {evidence}

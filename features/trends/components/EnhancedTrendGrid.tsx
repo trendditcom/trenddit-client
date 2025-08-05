@@ -31,7 +31,7 @@ export function EnhancedTrendGrid({
     return (
       <div className="text-center py-12">
         <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-500">No trends found for the selected criteria</p>
+        <p className="text-gray-700 font-medium">No trends found for the selected criteria</p>
       </div>
     );
   }

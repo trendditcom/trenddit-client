@@ -368,28 +368,28 @@ export default function TrendsPage() {
                           {dashboardQuery.data.summary.totalInsights}
                         </div>
                         <div className="text-sm text-gray-600">Live Trends</div>
-                        <div className="text-xs text-gray-500">Actively monitored</div>
+                        <div className="text-xs text-gray-700 font-medium">Actively monitored</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-green-600">
                           {Math.round(dashboardQuery.data.summary.averageConfidence * 100)}%
                         </div>
                         <div className="text-sm text-gray-600">AI Confidence</div>
-                        <div className="text-xs text-gray-500">Analysis accuracy</div>
+                        <div className="text-xs text-gray-700 font-medium">Analysis accuracy</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-purple-600">
                           {Math.round(dashboardQuery.data.summary.cacheHitRate * 100)}%
                         </div>
                         <div className="text-sm text-gray-600">Data Freshness</div>
-                        <div className="text-xs text-gray-500">Real-time updates</div>
+                        <div className="text-xs text-gray-700 font-medium">Real-time updates</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-orange-600">
                           {dashboardQuery.data.systemHealth.agentsOnline}
                         </div>
                         <div className="text-sm text-gray-600">AI Agents</div>
-                        <div className="text-xs text-gray-500">Processing trends</div>
+                        <div className="text-xs text-gray-700 font-medium">Processing trends</div>
                       </div>
                     </div>
                   ) : (
@@ -573,7 +573,7 @@ export default function TrendsPage() {
                   <div>
                     <label className="text-xs font-medium text-gray-700">Company Domain (Optional)</label>
                     <Input
-                      placeholder="e.g., fintech, healthtech"
+                      placeholder="e.g., company.com, startup.io"
                       value={companyProfile.domain || ''}
                       onChange={(e) => setCompanyProfile(prev => ({ ...prev, domain: e.target.value }))}
                       className="mt-1 text-sm h-10"
@@ -583,20 +583,20 @@ export default function TrendsPage() {
               </div>
 
               {/* Filters and Search */}
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex-shrink-0">
                   <TrendFilters
                     selectedCategory={selectedCategory}
                     onCategoryChange={setSelectedCategory}
                   />
                 </div>
-                <div className="flex items-center gap-2 flex-1 max-w-md">
-                  <Search className="h-4 w-4 text-gray-400" />
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Search className="h-4 w-4 text-gray-400 flex-shrink-0" />
                   <Input
                     placeholder="Search trends..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1"
+                    className="flex-1 min-w-0"
                   />
                 </div>
               </div>
@@ -626,7 +626,7 @@ export default function TrendsPage() {
                   <TrendingUp className="h-5 w-5" />
                   AI-Enhanced Trend Intelligence ({filteredTrends.length})
                 </h2>
-                <div className="text-sm text-gray-500">
+                <div className="text-sm text-gray-700 font-medium">
                   View: {viewMode === 'cards' ? 'Card Grid' : 'Detailed Rows'}
                 </div>
               </div>
@@ -690,12 +690,12 @@ export default function TrendsPage() {
                             >
                               {signal.strength}
                             </Badge>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-gray-700 font-medium">
                               {Math.round(signal.confidence * 100)}%
                             </span>
                           </div>
                         </div>
-                        <div className="text-xs text-gray-600">
+                        <div className="text-xs text-gray-800">
                           Relevant for {companyProfile.size} companies in {companyProfile.industry}
                         </div>
                       </div>
