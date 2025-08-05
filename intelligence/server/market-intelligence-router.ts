@@ -293,7 +293,9 @@ Respond in JSON format:
         errorMessage += `User Role: ${input.userRole}\n`;
         
         if (error instanceof Error && error.message.includes('API key')) {
-          errorMessage += 'Issue: OpenAI API key configuration problem';
+          errorMessage += 'Issue: OpenAI API key configuration problem\n';
+          errorMessage += 'Solution: Set OPENAI_API_KEY in .env.local or as environment variable\n';
+          errorMessage += 'Get your API key from: https://platform.openai.com/api-keys';
         } else if (error instanceof Error && error.message.includes('rate limit')) {
           errorMessage += 'Issue: API rate limit exceeded';
         } else if (error instanceof Error && error.message.includes('network')) {

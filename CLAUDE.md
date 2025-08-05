@@ -332,8 +332,118 @@ Return top 3 matches with confidence scores.
 - Provide copy functionality for easy error reporting
 - Show clear next steps for resolution
 
+## Context Engineering & Specs Usage
+
+### Efficient Specs File Usage
+
+The `.claude/specs/` directory is organized for optimal context engineering and code generation quality. Use these files strategically:
+
+#### **1. Architecture & System Design**
+📁 **Use `.claude/specs/core.md`** (127 lines) for:
+- System architecture decisions and tech stack
+- Feature-slice architecture patterns
+- Event-driven communication
+- Data flow and performance requirements
+- Security and compliance standards
+
+#### **2. Development Standards & Workflow**
+📁 **Use `.claude/specs/development.md`** (238 lines) for:
+- TypeScript and React coding standards
+- Error handling rules and patterns
+- Testing strategy and quality gates
+- Deployment and rollback procedures
+- Performance optimization guidelines
+
+#### **3. Feature Requirements & Specifications**  
+📁 **Use `.claude/specs/features.md`** (200 lines) for:
+- Current feature specifications and status
+- User requirements and success metrics
+- Feature flag configuration
+- Integration requirements
+- Performance targets
+
+#### **4. AI Integration & Intelligence System**
+📁 **Use `.claude/specs/ai-system.md`** (314 lines) for:
+- Multi-agent system architecture
+- GPT-4o integration patterns
+- Chain-of-thought reasoning implementation
+- Data quality and validation
+- AI performance monitoring
+
+#### **5. UI Implementation & Design System**
+📁 **Use `.claude/specs/ui-patterns.md`** (415 lines) for:
+- Component library standards
+- Layout and responsive design patterns
+- Accessibility requirements
+- AI-specific UI components
+- Performance optimization for UI
+
+#### **6. Product Vision & Strategy**
+📁 **Use `.claude/specs/vision.md`** (161 lines) for:
+- Product philosophy and target users
+- Long-term strategic direction
+- Market positioning
+
+### Context Selection Strategy
+
+**For Feature Development Tasks:**
+1. **Start with** `features.md` to understand requirements
+2. **Reference** `core.md` for architectural patterns
+3. **Follow** `development.md` for implementation standards
+4. **Integrate** `ai-system.md` for AI functionality
+5. **Apply** `ui-patterns.md` for user interface
+
+**For Architecture Questions:**
+- Primary: `core.md`
+- Secondary: `ai-system.md` (for AI architecture)
+
+**For Code Quality Issues:**
+- Primary: `development.md`
+- Secondary: `core.md` (for architectural context)
+
+**For UI/UX Implementation:**
+- Primary: `ui-patterns.md`
+- Secondary: `features.md` (for feature requirements)
+
+**For AI Integration:**
+- Primary: `ai-system.md`
+- Secondary: `development.md` (for integration patterns)
+
+### File Size Guidelines
+
+All specs files are optimized for efficient LLM context:
+- **Target range**: 200-400 lines per file
+- **Maximum size**: 415 lines (largest file)
+- **Total size**: 1,469 lines across 6 files
+- **Benefit**: Fast loading, focused context, no redundancy
+
+### Update Patterns
+
+**When adding new features:**
+1. Update `features.md` with requirements
+2. Reference existing patterns in other specs
+3. Update relevant specs if new patterns emerge
+
+**When changing architecture:**
+1. Update `core.md` with new patterns
+2. Update `development.md` if workflow changes
+3. Update `ai-system.md` if AI patterns change
+
+**When improving UI:**
+1. Update `ui-patterns.md` with new components
+2. Ensure consistency with `features.md` requirements
+
+### Slash Commands Integration
+
+The `/feature` command automatically references appropriate specs:
+- Analyzes requirements from `features.md`
+- Applies architecture from `core.md`
+- Follows standards from `development.md`
+- Integrates AI from `ai-system.md`
+- Implements UI from `ui-patterns.md`
+
 ## Questions or Issues?
-- Check `.claude/specs/` for detailed documentation
+- Check appropriate `.claude/specs/` file using guidelines above
 - Review recent commits for patterns
 - When in doubt, ship and iterate
 

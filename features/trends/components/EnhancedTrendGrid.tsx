@@ -13,14 +13,12 @@ interface CompanyProfile {
 interface EnhancedTrendGridProps {
   trends: Trend[];
   companyProfile?: CompanyProfile;
-  onConversationStart?: (trendId: string) => void;
   onGenerateNeeds?: (trendId: string) => void;
 }
 
 export function EnhancedTrendGrid({ 
   trends, 
   companyProfile,
-  onConversationStart,
   onGenerateNeeds,
 }: EnhancedTrendGridProps) {
   if (trends.length === 0) {
@@ -39,7 +37,6 @@ export function EnhancedTrendGrid({
           key={trend.id}
           trend={trend}
           companyProfile={companyProfile}
-          onConversationStart={onConversationStart}
           onGenerateNeeds={onGenerateNeeds}
         />
       ))}

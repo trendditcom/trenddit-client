@@ -454,8 +454,8 @@ Respond in JSON format:
       // Check for OpenAI API key in environment variables (project env first, then user env)
       const apiKey = process.env.OPENAI_API_KEY;
       
-      if (!apiKey || apiKey === 'sk-your-openai-key' || apiKey.startsWith('sk-your-')) {
-        throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY in .env.local or as a user environment variable.');
+      if (!apiKey || apiKey === 'your-actual-openai-api-key' || apiKey.startsWith('sk-your-') || apiKey.startsWith('your-')) {
+        throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY in .env.local or as a user environment variable. Get your API key from https://platform.openai.com/api-keys');
       }
 
       const response = await openai.chat.completions.create({

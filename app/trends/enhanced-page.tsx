@@ -23,7 +23,6 @@ import {
   Users, 
   AlertCircle, 
   Activity,
-  MessageSquare,
   Loader2,
   Zap,
   Download,
@@ -50,9 +49,6 @@ export default function EnhancedTrendsPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [searchQuery, setSearchQuery] = useState('');
   const [dashboardExpanded, setDashboardExpanded] = useState(true);
-  const [conversationMode, setConversationMode] = useState(false);
-  const [currentTopic, setCurrentTopic] = useState('');
-  const [conversationHistory, setConversationHistory] = useState<string[]>([]);
 
   // Company profile state
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({
@@ -76,14 +72,8 @@ export default function EnhancedTrendsPage() {
 
   // Intelligence queries
   const dashboardQuery = trpc.intelligence.getIntelligenceDashboard.useQuery();
-  const generateInsights = trpc.intelligence.generateConversationalInsights.useMutation({
-    onSuccess: (data) => {
-      setConversationHistory(prev => [...prev, data.primaryInsight]);
-    },
-  });
   const synthesizeIntelligence = trpc.intelligence.synthesizeMarketIntelligence.useMutation();
 
-  const utils = trpc.useUtils();
 
   // Client-side filtering - apply category and search filters to master dataset
   const filteredTrends = React.useMemo(() => {
@@ -108,32 +98,6 @@ export default function EnhancedTrendsPage() {
   }, [allTrends, selectedCategory, searchQuery]);
 
   // Event handlers
-  const handleConversationStart = async (trendId: string) => {
-    try {
-      const trend = await utils.trends.getById.fetch({ trendId });
-      
-      if (trend) {
-        setCurrentTopic(trend.title);
-        setConversationMode(true);
-        
-        generateInsights.mutate({
-          conversationContext: {
-            previousMessages: [],
-            currentTopic: trend.title,
-            userQuestions: [`Tell me about ${trend.title} and its relevance to my company`],
-          },
-          userRole: 'cto',
-          companyContext: {
-            industry: companyProfile.industry,
-            size: companyProfile.size,
-            challenges: ['scalability', 'compliance', 'talent'],
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Error starting conversation:', error);
-    }
-  };
 
   const handleMarketSynthesis = (query: string) => {
     synthesizeIntelligence.mutate({
@@ -216,14 +180,6 @@ export default function EnhancedTrendsPage() {
                   </Button>
                 )}
                 
-                <Button
-                  variant="outline"
-                  onClick={() => setConversationMode(!conversationMode)}
-                  className="flex items-center gap-2"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  {conversationMode ? 'Exit Chat' : 'Start Conversation'}
-                </Button>
               </div>
             </div>
           </div>
@@ -485,14 +441,12 @@ export default function EnhancedTrendsPage() {
                 <EnhancedTrendGrid
                   trends={filteredTrends}
                   companyProfile={companyProfile}
-                  onConversationStart={handleConversationStart}
                   onGenerateNeeds={handleGenerateNeeds}
                 />
               ) : (
                 <TrendRowView
                   trends={filteredTrends}
                   companyProfile={companyProfile}
-                  onConversationStart={handleConversationStart}
                   onGenerateNeeds={handleGenerateNeeds}
                 />
               )}
@@ -538,59 +492,6 @@ export default function EnhancedTrendsPage() {
               </CardContent>
             </Card>
 
-            {/* Conversational Interface */}
-            {conversationMode && (
-              <Card className="border-2 border-green-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <MessageSquare className="h-4 w-4" />
-                    AI Conversation
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="text-sm font-medium text-gray-700">
-                      Topic: {currentTopic}
-                    </div>
-                    
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {conversationHistory.map((message, index) => (
-                        <div key={index} className="p-2 bg-blue-50 rounded text-xs">
-                          {message}
-                        </div>
-                      ))}
-                      
-                      {generateInsights.isPending && (
-                        <div className="p-2 bg-gray-50 rounded text-xs flex items-center gap-2">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          AI is thinking...
-                        </div>
-                      )}
-                    </div>
-
-                    {generateInsights.data && (
-                      <div className="space-y-2">
-                        <div className="text-xs font-medium">Follow-up questions:</div>
-                        {generateInsights.data.followUpQuestions.slice(0, 2).map((question: string, index: number) => (
-                          <Button
-                            key={index}
-                            variant="outline"
-                            size="sm"
-                            className="w-full text-xs h-auto py-2 px-3 text-left"
-                            onClick={() => {
-                              setConversationHistory(prev => [...prev, `You: ${question}`]);
-                              // In real implementation, this would trigger another AI response
-                            }}
-                          >
-                            {question}
-                          </Button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
             {/* Quick Actions */}
             <Card>

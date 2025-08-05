@@ -7,7 +7,7 @@ import { Badge } from '@/lib/ui/badge';
 import { trpc } from '@/lib/trpc/client';
 import { 
   TrendingUp, 
-  MessageCircle, 
+ 
   ExternalLink, 
   Calendar,
   Target,
@@ -26,14 +26,12 @@ interface CompanyProfile {
 interface TrendRowViewProps {
   trends: Trend[];
   companyProfile?: CompanyProfile;
-  onConversationStart?: (trendId: string) => void;
   onGenerateNeeds?: (trendId: string) => void;
 }
 
 export function TrendRowView({ 
   trends, 
   companyProfile,
-  onConversationStart,
   onGenerateNeeds,
 }: TrendRowViewProps) {
   const [expandedTrend, setExpandedTrend] = useState<string | null>(null);
@@ -184,15 +182,6 @@ export function TrendRowView({
 
                 {/* Actions - Col 11-12 */}
                 <div className="col-span-2 flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onConversationStart?.(trend.id)}
-                    className="flex items-center gap-1 text-xs py-1 px-2 h-auto"
-                  >
-                    <MessageCircle className="h-3 w-3" />
-                    Chat
-                  </Button>
                   
                   <Button
                     variant="outline"

@@ -11,7 +11,7 @@ import { Button } from '@/lib/ui/button';
 import { Badge } from '@/lib/ui/badge';
 import { trpc } from '@/lib/trpc/client';
 import { Trend } from '@/features/trends/types/trend';
-import { Loader2, MessageCircle, TrendingUp, AlertTriangle, CheckCircle, Brain, Zap } from 'lucide-react';
+import { Loader2, TrendingUp, AlertTriangle, CheckCircle, Brain, Zap } from 'lucide-react';
 
 interface IntelligentTrendCardProps {
   trend: Trend;
@@ -20,7 +20,6 @@ interface IntelligentTrendCardProps {
     size: 'startup' | 'small' | 'medium' | 'enterprise';
     techMaturity: 'low' | 'medium' | 'high';
   };
-  onConversationStart?: (trendId: string) => void;
   onGenerateNeeds?: (trendId: string) => void;
   isAnalyzing?: boolean;
 }
@@ -28,7 +27,6 @@ interface IntelligentTrendCardProps {
 export function IntelligentTrendCard({ 
   trend, 
   companyProfile,
-  onConversationStart,
   onGenerateNeeds,
   isAnalyzing = false
 }: IntelligentTrendCardProps) {
@@ -194,15 +192,6 @@ export function IntelligentTrendCard({
           )}
 
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onConversationStart?.(trend.id)}
-            className="flex items-center gap-1 text-xs h-8 px-2"
-          >
-            <MessageCircle className="h-3 w-3" />
-            Chat
-          </Button>
 
           <Button
             size="sm"
