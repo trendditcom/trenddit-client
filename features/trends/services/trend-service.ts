@@ -5,45 +5,56 @@
  */
 
 import { Trend, TrendCategory } from '../types/trend';
-import { serverConfig } from '@/lib/config/server';
 
-// Simple in-memory cache for client-side usage
-let trendsCache: { [key: string]: { trends: Trend[], timestamp: number } } = {};
+// Master cache for trends - single source of truth
+let masterTrendsCache: { trends: Trend[], timestamp: number } | null = null;
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+const STORAGE_KEY = 'trenddit_master_trends_cache';
 
 /**
- * Get trends with caching support
+ * Get master trends dataset with multi-layer caching (localStorage + memory)
  */
 export async function getTrends(category?: TrendCategory, limit: number = 20): Promise<Trend[]> {
-  const cacheKey = `${category || 'all'}_${limit}`;
-  const cached = trendsCache[cacheKey];
+  // Try memory cache first
+  if (masterTrendsCache && (Date.now() - masterTrendsCache.timestamp) < CACHE_DURATION) {
+    return filterTrendsByCategory(masterTrendsCache.trends, category, limit);
+  }
   
-  // Check if cache is still valid
-  if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION) {
-    return cached.trends;
+  // Try localStorage cache
+  const cachedData = getFromLocalStorage();
+  if (cachedData && (Date.now() - cachedData.timestamp) < CACHE_DURATION) {
+    masterTrendsCache = cachedData; // Restore to memory
+    return filterTrendsByCategory(cachedData.trends, category, limit);
   }
   
   try {
     // Dynamic import to avoid client-side import issues
     const { generateDynamicTrends } = await import('../server/trend-generator');
     
-    // Generate fresh trends
-    const trends = await generateDynamicTrends(category, limit);
+    // Generate fresh mixed dataset (always mixed, regardless of category param)
+    const trends = await generateDynamicTrends(undefined, 20); // Always get mixed set of 20
     
-    // Cache the results
-    trendsCache[cacheKey] = {
-      trends,
-      timestamp: Date.now()
-    };
+    // Cache in both memory and localStorage
+    const cacheData = { trends, timestamp: Date.now() };
+    masterTrendsCache = cacheData;
+    saveToLocalStorage(cacheData);
     
-    return trends;
+    // Return filtered results
+    return filterTrendsByCategory(trends, category, limit);
   } catch (error) {
     console.error('Error fetching trends:', error);
     
-    // Return cached data if available and caching is enabled
-    if (cached && serverConfig.cache.memory.enabled) {
+    // Return stale cached data if available (always enabled for better UX)
+    if (masterTrendsCache) {
       console.warn('Returning stale cached data due to error');
-      return cached.trends;
+      return filterTrendsByCategory(masterTrendsCache.trends, category, limit);
+    }
+    
+    // Try stale localStorage data as last resort
+    const staleData = getFromLocalStorage();
+    if (staleData) {
+      console.warn('Returning stale localStorage data due to error');
+      return filterTrendsByCategory(staleData.trends, category, limit);
     }
     
     // Re-throw error for proper handling by UI
@@ -56,9 +67,18 @@ export async function getTrends(category?: TrendCategory, limit: number = 20): P
  */
 export async function getTrendById(trendId: string): Promise<Trend | null> {
   try {
-    // First check cache
-    for (const cached of Object.values(trendsCache)) {
-      const trend = cached.trends.find(t => t.id === trendId);
+    // First check memory cache
+    if (masterTrendsCache) {
+      const trend = masterTrendsCache.trends.find(t => t.id === trendId);
+      if (trend) {
+        return trend;
+      }
+    }
+    
+    // Check localStorage cache
+    const cachedData = getFromLocalStorage();
+    if (cachedData) {
+      const trend = cachedData.trends.find(t => t.id === trendId);
       if (trend) {
         return trend;
       }
@@ -85,18 +105,82 @@ export async function getTrendsForDisplay(limit: number = 5): Promise<Trend[]> {
  * Clear trends cache (useful for forced refresh)
  */
 export function clearTrendsCache(): void {
-  trendsCache = {};
+  masterTrendsCache = null;
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  } catch (error) {
+    console.warn('Failed to clear trends from localStorage:', error);
+  }
 }
 
 /**
  * Get cached trends without API call (for immediate display)
  */
 export function getCachedTrends(category?: TrendCategory): Trend[] | null {
-  const cacheKey = `${category || 'all'}_20`;
-  const cached = trendsCache[cacheKey];
+  // Check memory cache first
+  if (masterTrendsCache && (Date.now() - masterTrendsCache.timestamp) < CACHE_DURATION) {
+    return filterTrendsByCategory(masterTrendsCache.trends, category, 20);
+  }
+  
+  // Check localStorage cache
+  const cachedData = getFromLocalStorage();
+  if (cachedData && (Date.now() - cachedData.timestamp) < CACHE_DURATION) {
+    return filterTrendsByCategory(cachedData.trends, category, 20);
+  }
   
   // Return null instead of empty array to indicate no cache
-  return cached?.trends || null;
+  return null;
+}
+
+/**
+ * Filter trends by category on client-side
+ */
+function filterTrendsByCategory(trends: Trend[], category?: TrendCategory, limit?: number): Trend[] {
+  let filtered = trends;
+  
+  // Apply category filter if specified
+  if (category) {
+    filtered = trends.filter(trend => trend.category === category);
+  }
+  
+  // Apply limit if specified
+  if (limit && limit > 0) {
+    filtered = filtered.slice(0, limit);
+  }
+  
+  return filtered;
+}
+
+/**
+ * Save trends to localStorage with error handling
+ */
+function saveToLocalStorage(data: { trends: Trend[], timestamp: number }): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+  } catch (error) {
+    console.warn('Failed to save trends to localStorage:', error);
+  }
+}
+
+/**
+ * Get trends from localStorage with error handling
+ */
+function getFromLocalStorage(): { trends: Trend[], timestamp: number } | null {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const data = localStorage.getItem(STORAGE_KEY);
+      if (data) {
+        return JSON.parse(data);
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to read trends from localStorage:', error);
+  }
+  return null;
 }
 
 /**
@@ -104,14 +188,10 @@ export function getCachedTrends(category?: TrendCategory): Trend[] | null {
  */
 export async function preloadTrends(): Promise<void> {
   try {
-    // Preload common trend combinations
-    await Promise.allSettled([
-      getTrends(undefined, 20), // All trends
-      getTrends('consumer', 10),
-      getTrends('competition', 10),
-      getTrends('economy', 10),
-      getTrends('regulation', 10),
-    ]);
+    // Preload the master mixed dataset once
+    // This will cache it for all category filters
+    await getTrends(undefined, 20);
+    console.log('Master trends dataset preloaded successfully');
   } catch (error) {
     console.error('Error preloading trends:', error);
   }

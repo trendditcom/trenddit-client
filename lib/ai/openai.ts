@@ -1,6 +1,5 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
-import { serverConfig } from '@/lib/config/server';
 import { withRetry } from '@/lib/utils/retry';
 
 export const openai = new OpenAI({
@@ -21,7 +20,7 @@ export async function generateCompletion(prompt: string): Promise<string> {
   try {
     return await withRetry(async () => {
       const response = await openai.chat.completions.create({
-        model: serverConfig.ai.model,
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
@@ -33,8 +32,8 @@ export async function generateCompletion(prompt: string): Promise<string> {
           },
         ],
         response_format: { type: 'json_object' },
-        temperature: serverConfig.ai.temperature,
-        max_tokens: serverConfig.ai.max_tokens,
+        temperature: 0.7,
+        max_tokens: 3000,
       });
 
       const content = response.choices[0].message.content;
@@ -51,15 +50,15 @@ export async function generateCompletion(prompt: string): Promise<string> {
     
     if (error instanceof Error) {
       if (error.message.includes('API key')) {
-        throw new Error(serverConfig.errors.messages.api_key_missing);
+        throw new Error('OpenAI API key is not configured. Please contact support.');
       } else if (error.message.includes('rate limit')) {
-        throw new Error(serverConfig.errors.messages.rate_limit);
+        throw new Error('You\'ve reached the rate limit. Please try again in a few minutes.');
       } else if (error.message.includes('network')) {
-        throw new Error(serverConfig.errors.messages.network_error);
+        throw new Error('Unable to connect to the AI service. Please check your internet connection.');
       }
     }
     
-    throw new Error(serverConfig.errors.messages.generation_failed);
+    throw new Error('Failed to generate content. Please try again or contact support if the issue persists.');
   }
 }
 
@@ -85,7 +84,7 @@ Provide analysis with:
 Keep response concise and actionable.`;
 
       const response = await openai.chat.completions.create({
-        model: serverConfig.ai.model,
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
@@ -97,7 +96,7 @@ Keep response concise and actionable.`;
           },
         ],
         response_format: { type: 'json_object' },
-        temperature: serverConfig.ai.temperature,
+        temperature: 0.7,
         max_tokens: 500,
       });
 
@@ -116,14 +115,14 @@ Keep response concise and actionable.`;
     
     if (error instanceof Error) {
       if (error.message.includes('API key')) {
-        throw new Error(serverConfig.errors.messages.api_key_missing);
+        throw new Error('OpenAI API key is not configured. Please contact support.');
       } else if (error.message.includes('rate limit')) {
-        throw new Error(serverConfig.errors.messages.rate_limit);
+        throw new Error('You\'ve reached the rate limit. Please try again in a few minutes.');
       } else if (error.message.includes('network')) {
-        throw new Error(serverConfig.errors.messages.network_error);
+        throw new Error('Unable to connect to the AI service. Please check your internet connection.');
       }
     }
     
-    throw new Error(serverConfig.errors.messages.generation_failed);
+    throw new Error('Failed to generate content. Please try again or contact support if the issue persists.');
   }
 }

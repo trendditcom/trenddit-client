@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/lib/ui/card';
 import { Button } from '@/lib/ui/button';
@@ -26,7 +26,8 @@ import {
   List,
   ChevronDown,
   ChevronUp,
-  Search
+  Search,
+  RefreshCw
 } from 'lucide-react';
 import { ErrorDisplay } from '@/lib/ui/error-display';
 import { TrendCardSkeleton, ProgressLoader } from '@/lib/ui/skeleton';
@@ -62,10 +63,12 @@ export default function TrendsPage() {
   // Feature flags
   const exportEnabled = useFeatureFlag('trends.export');
 
-  // API queries and mutations
-  const { data: trends, isLoading, error } = trpc.trends.list.useQuery({
-    category: selectedCategory || undefined,
-    limit: 20,
+  // API queries and mutations - always fetch mixed dataset for client-side filtering
+  const { data: allTrends, isLoading, error } = trpc.trends.list.useQuery({
+    limit: 20, // Always get mixed dataset of 20 trends
+  }, {
+    staleTime: 30 * 60 * 1000, // 30 minutes - prevent auto-refresh
+    gcTime: 60 * 60 * 1000, // 1 hour - keep in cache longer (renamed from cacheTime)
   });
 
   const exportMutation = trpc.trends.export.useMutation();
@@ -82,11 +85,27 @@ export default function TrendsPage() {
 
   const utils = trpc.useUtils();
 
-  // Filter trends based on search
-  const filteredTrends = trends?.filter(trend => 
-    trend.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    trend.summary.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
+  // Client-side filtering - apply category and search filters to master dataset
+  const filteredTrends = React.useMemo(() => {
+    if (!allTrends) return [];
+    
+    let filtered = allTrends;
+    
+    // Apply category filter
+    if (selectedCategory) {
+      filtered = filtered.filter(trend => trend.category === selectedCategory);
+    }
+    
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter(trend => 
+        trend.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        trend.summary.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    return filtered;
+  }, [allTrends, selectedCategory, searchQuery]);
 
   // Event handlers
   const handleConversationStart = async (trendId: string) => {
@@ -125,8 +144,8 @@ export default function TrendsPage() {
   };
 
   const handleExport = () => {
-    if (!exportEnabled || !trends) return;
-    const trendIds = trends.map((t) => t.id);
+    if (!exportEnabled || !allTrends) return;
+    const trendIds = allTrends.map((t) => t.id);
     exportMutation.mutate({ format: 'pdf', trendIds });
   };
 
@@ -142,6 +161,16 @@ export default function TrendsPage() {
 
   const handleGenerateNeeds = (trendId: string) => {
     router.push(`/needs?trendId=${trendId}`);
+  };
+
+  const handleRefreshTrends = () => {
+    // Clear cache and refetch fresh data
+    utils.trends.list.invalidate();
+    
+    // Also clear the service layer cache
+    import('@/features/trends/services/trend-service').then(({ clearTrendsCache }) => {
+      clearTrendsCache();
+    });
   };
 
   return (
@@ -194,7 +223,18 @@ export default function TrendsPage() {
                   </Button>
                 </div>
 
-                {exportEnabled && trends && trends.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={handleRefreshTrends}
+                  disabled={isLoading}
+                  className="flex items-center gap-2"
+                  title="Refresh trends - get latest market intelligence"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+
+                {exportEnabled && allTrends && allTrends.length > 0 && (
                   <Button
                     variant="outline"
                     onClick={handleExport}
@@ -602,7 +642,7 @@ export default function TrendsPage() {
                   <TrendingUp className="h-4 w-4 mr-2" />
                   Solution Marketplace
                 </Button>
-                {exportEnabled && trends && trends.length > 0 && (
+                {exportEnabled && allTrends && allTrends.length > 0 && (
                   <Button 
                     variant="outline" 
                     className="w-full justify-start"

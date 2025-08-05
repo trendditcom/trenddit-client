@@ -1,4 +1,4 @@
-import { serverConfig } from '@/lib/config/server';
+// Removed server config dependency for client-side compatibility
 
 export interface RetryOptions {
   maxAttempts?: number;
@@ -16,10 +16,10 @@ export async function withRetry<T>(
   options: RetryOptions = {}
 ): Promise<T> {
   const {
-    maxAttempts = serverConfig.ai.retry.max_attempts,
-    initialDelay = serverConfig.ai.retry.initial_delay,
-    maxDelay = serverConfig.ai.retry.max_delay,
-    backoffFactor = serverConfig.ai.retry.backoff_factor,
+    maxAttempts = 3,
+    initialDelay = 1000,
+    maxDelay = 10000,
+    backoffFactor = 2,
     onRetry
   } = options;
 

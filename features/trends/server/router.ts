@@ -10,14 +10,17 @@ export const trendsRouter = router({
   list: publicProcedure
     .input(
       z.object({
-        category: TrendCategorySchema.optional(),
+        // Remove category parameter - always return mixed dataset for client-side filtering
         limit: z.number().min(1).max(100).default(20),
+        // Optional refresh parameter to force fresh generation
+        refresh: z.boolean().default(false),
       })
     )
     .query(async ({ input }) => {
       try {
-        // Generate fresh, dynamic trends using AI
-        const trends = await generateDynamicTrends(input.category, input.limit);
+        // Always generate mixed category dataset for client-side filtering
+        // This ensures balanced distribution and instant filter responses
+        const trends = await generateDynamicTrends(undefined, input.limit);
         return trends;
       } catch (error) {
         console.error('Failed to generate dynamic trends:', error);

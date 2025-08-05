@@ -6,28 +6,33 @@
 
 import { openai } from '@/lib/ai/openai';
 import { Trend, TrendCategory } from '../types/trend';
-import { serverConfig } from '@/lib/config/server';
 
 /**
- * Generate current trends dynamically using AI
- * @param category - Optional category filter
- * @param limit - Number of trends to generate (default 10)
- * @returns Array of fresh, current trends
+ * Generate current trends dynamically using AI with balanced category distribution
+ * @param category - Optional category filter (for backward compatibility, but generates mixed regardless)
+ * @param limit - Number of trends to generate (default 20 for balanced mix)
+ * @returns Array of fresh, current trends with balanced category distribution
  */
 export async function generateDynamicTrends(
   category?: TrendCategory,
-  limit: number = 10
+  limit: number = 20
 ): Promise<Trend[]> {
   const currentDate = new Date();
   const currentMonth = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const todayFormatted = currentDate.toISOString().split('T')[0];
   
-  // Create a category-specific or general prompt
-  const categoryPrompt = category 
-    ? `Focus specifically on ${category} trends.`
-    : 'Include a mix of consumer, competition, economy, and regulation trends.';
+  // Always generate balanced mix regardless of category parameter
+  // This ensures client-side filtering works properly
+  const trendsPerCategory = Math.ceil(limit / 4); // Divide among 4 categories
+  const categoryPrompt = `Generate exactly ${trendsPerCategory} trends for EACH of these categories:
+1. CONSUMER trends (${trendsPerCategory} trends) - AI products, services, and experiences for end consumers
+2. COMPETITION trends (${trendsPerCategory} trends) - Competitive moves, market dynamics, company strategies  
+3. ECONOMY trends (${trendsPerCategory} trends) - Economic impacts, market valuations, financial implications
+4. REGULATION trends (${trendsPerCategory} trends) - Regulatory developments, compliance, policy changes
 
-  const prompt = `You are a leading AI and technology market analyst with real-time knowledge of current events. Generate ${limit} current, relevant AI/technology trends for ${currentMonth}.
+ENSURE BALANCED DISTRIBUTION: The response must contain ${trendsPerCategory} trends from each category for a total of ${limit} trends.`;
+
+  const prompt = `You are a leading AI and technology market analyst with real-time knowledge of current events. Generate ${limit} current, relevant AI/technology trends for ${currentMonth} with BALANCED CATEGORY DISTRIBUTION.
 
 CRITICAL REQUIREMENTS:
 - Trends MUST be current and relevant to ${currentMonth}
@@ -35,6 +40,7 @@ CRITICAL REQUIREMENTS:
 - Use realistic, current data points and statistics
 - Include specific company names, products, and initiatives that are relevant TODAY
 - Mix breaking news with ongoing developments
+- MUST include balanced distribution across all 4 categories
 
 ${categoryPrompt}
 
@@ -120,15 +126,15 @@ Return as JSON array with this structure:
     // Throw error with appropriate message based on error type
     if (error instanceof Error) {
       if (error.message.includes('API key')) {
-        throw new Error(serverConfig.errors.messages.api_key_missing);
+        throw new Error('OpenAI API key is not configured. Please contact support.');
       } else if (error.message.includes('rate limit')) {
-        throw new Error(serverConfig.errors.messages.rate_limit);
+        throw new Error('You\'ve reached the rate limit. Please try again in a few minutes.');
       } else if (error.message.includes('network')) {
-        throw new Error(serverConfig.errors.messages.network_error);
+        throw new Error('Unable to connect to the AI service. Please check your internet connection.');
       }
     }
     
-    throw new Error(serverConfig.errors.messages.generation_failed);
+    throw new Error('Failed to generate content. Please try again or contact support if the issue persists.');
   }
 }
 
