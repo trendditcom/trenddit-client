@@ -5,6 +5,7 @@
  */
 
 import { Trend, TrendCategory } from '../types/trend';
+import { serverConfig } from '@/lib/config/server';
 
 // Simple in-memory cache for client-side usage
 let trendsCache: { [key: string]: { trends: Trend[], timestamp: number } } = {};
@@ -39,13 +40,14 @@ export async function getTrends(category?: TrendCategory, limit: number = 20): P
   } catch (error) {
     console.error('Error fetching trends:', error);
     
-    // Return cached data if available, even if expired
-    if (cached) {
+    // Return cached data if available and caching is enabled
+    if (cached && serverConfig.cache.memory.enabled) {
+      console.warn('Returning stale cached data due to error');
       return cached.trends;
     }
     
-    // Final fallback - return empty array
-    return [];
+    // Re-throw error for proper handling by UI
+    throw error;
   }
 }
 
@@ -68,7 +70,7 @@ export async function getTrendById(trendId: string): Promise<Trend | null> {
     return trend;
   } catch (error) {
     console.error('Error fetching trend by ID:', error);
-    return null;
+    throw error; // Propagate error for proper handling
   }
 }
 
@@ -89,11 +91,12 @@ export function clearTrendsCache(): void {
 /**
  * Get cached trends without API call (for immediate display)
  */
-export function getCachedTrends(category?: TrendCategory): Trend[] {
+export function getCachedTrends(category?: TrendCategory): Trend[] | null {
   const cacheKey = `${category || 'all'}_20`;
   const cached = trendsCache[cacheKey];
   
-  return cached?.trends || [];
+  // Return null instead of empty array to indicate no cache
+  return cached?.trends || null;
 }
 
 /**

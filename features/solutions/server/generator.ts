@@ -1,4 +1,5 @@
 import { openai } from '@/lib/ai/openai'
+import { serverConfig } from '@/lib/config/server'
 import type { 
   Solution, 
   GenerateSolutionsInput, 
@@ -152,15 +153,18 @@ ${companyContext.goals && companyContext.goals.length > 0 ? `- Each solution sho
   } catch (error) {
     console.error('Error generating AI solutions:', error)
     
-    // Check if it's an API key issue
-    if (error instanceof Error && error.message.includes('API key')) {
-      console.log('OpenAI API key not configured, using dynamic fallback generation')
-      return await generateDynamicFallbackSolutions(input)
+    // Re-throw with appropriate error message
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        throw new Error(serverConfig.errors.messages.api_key_missing)
+      } else if (error.message.includes('rate limit')) {
+        throw new Error(serverConfig.errors.messages.rate_limit)
+      } else if (error.message.includes('network')) {
+        throw new Error(serverConfig.errors.messages.network_error)
+      }
     }
     
-    // For other errors, retry with a simplified prompt
-    console.log('AI generation failed, retrying with dynamic fallback. Error:', error)
-    return await generateDynamicFallbackSolutions(input)
+    throw new Error(serverConfig.errors.messages.generation_failed)
   }
 }
 
@@ -201,6 +205,8 @@ export async function calculateROI(
     expectedRevenue?: number
     costSavings?: number
     productivityGains?: number
+    initialInvestment?: number
+    monthlyCost?: number
   }
 ): Promise<{
   monthlyROI: number
@@ -209,179 +215,43 @@ export async function calculateROI(
   netPresentValue: number
   internalRateOfReturn: number
 }> {
-  const revenue = customInputs?.expectedRevenue || 50000
-  const savings = customInputs?.costSavings || 20000
-  const productivity = customInputs?.productivityGains || 15000
+  // Get required inputs or throw error
+  if (!customInputs || !customInputs.initialInvestment || !customInputs.monthlyCost) {
+    throw new Error('ROI calculation requires initial investment and monthly cost inputs')
+  }
   
-  const totalBenefit = revenue + savings + productivity
-  const monthlyCost = 5000
+  const revenue = customInputs.expectedRevenue || 0
+  const savings = customInputs.costSavings || 0
+  const productivity = customInputs.productivityGains || 0
+  
+  const totalMonthlyBenefit = (revenue + savings + productivity) / 12
+  const monthlyCost = customInputs.monthlyCost
+  const initialInvestment = customInputs.initialInvestment
+  
+  // Calculate actual ROI metrics
+  const monthlyROI = totalMonthlyBenefit - monthlyCost
+  const annualROI = (totalMonthlyBenefit * 12) - (monthlyCost * 12)
+  
+  // Calculate payback period
+  const paybackPeriod = monthlyROI > 0 ? Math.ceil(initialInvestment / monthlyROI) : -1
+  
+  // Simplified NPV calculation (3-year horizon, 10% discount rate)
+  const discountRate = 0.10
+  const years = 3
+  let npv = -initialInvestment
+  for (let year = 1; year <= years; year++) {
+    npv += annualROI / Math.pow(1 + discountRate, year)
+  }
+  
+  // Simplified IRR calculation
+  const irr = annualROI > 0 ? (annualROI - initialInvestment) / initialInvestment : 0
   
   return {
-    monthlyROI: (totalBenefit / 12) - monthlyCost,
-    annualROI: totalBenefit - (monthlyCost * 12),
-    paybackPeriod: 18,
-    netPresentValue: 250000,
-    internalRateOfReturn: 0.25
+    monthlyROI,
+    annualROI,
+    paybackPeriod,
+    netPresentValue: Math.round(npv),
+    internalRateOfReturn: irr
   }
 }
 
-/**
- * Generate solutions using a simplified AI prompt as fallback
- * This ensures we never return hardcoded templates
- */
-async function generateDynamicFallbackSolutions(input: GenerateSolutionsInput): Promise<Solution[]> {
-  const currentYear = new Date().getFullYear();
-  
-  const fallbackPrompt = `You are a business solution consultant. Generate 3 practical solutions for this need using current ${currentYear} market conditions.
-
-NEED: ${input.needTitle}
-DESCRIPTION: ${input.needDescription}
-COMPANY: ${input.companyContext.name} (${input.companyContext.industry}, ${input.companyContext.size} size)
-
-Generate exactly 3 solutions:
-1. BUILD approach - custom development
-2. BUY approach - purchase existing solution
-3. PARTNER approach - work with consultancy/vendor
-
-For each solution:
-- Use REAL vendor names that exist in ${currentYear}
-- Base costs on current market rates
-- Make implementation timelines realistic for ${currentYear}
-- Consider actual technology capabilities available now
-
-Return as JSON:
-{
-  "solutions": [
-    {
-      "approach": "build|buy|partner",
-      "title": "Solution title",
-      "description": "2-3 sentence description",
-      "category": "automation",
-      "vendor": "Real vendor name (for buy/partner only)",
-      "estimatedCost": {"initial": 100000, "monthly": 5000, "annual": 60000},
-      "implementationTime": {"min": 3, "max": 6, "unit": "months"},
-      "roi": {"breakEvenMonths": 12, "threeYearReturn": 500000, "confidenceScore": 0.8},
-      "risks": ["risk1", "risk2"],
-      "benefits": ["benefit1", "benefit2", "benefit3"],
-      "requirements": ["req1", "req2"],
-      "alternatives": ["alt1", "alt2"],
-      "matchScore": 0.85
-    }
-  ]
-}`;
-
-  try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        {
-          role: 'system',
-          content: `You are a solution consultant with knowledge of current technology vendors and market rates in ${currentYear}. Always provide realistic, implementable solutions with actual vendor names.`
-        },
-        {
-          role: 'user',  
-          content: fallbackPrompt
-        }
-      ],
-      model: 'gpt-4o',
-      temperature: 0.4,
-      max_tokens: 2000,
-      response_format: { type: 'json_object' }
-    })
-
-    const response = completion.choices[0]?.message?.content
-    if (!response) {
-      throw new Error('No response from OpenAI')
-    }
-
-    const parsed = JSON.parse(response)
-    const solutions = parsed.solutions || []
-    
-    return solutions.map((sol: any, index: number) => ({
-      id: `solution_${Date.now()}_${index}`,
-      needId: input.needId,
-      ...sol,
-      createdAt: new Date()
-    }))
-  } catch (error) {
-    console.error('Dynamic fallback generation failed:', error)
-    
-    // Final fallback - generate minimal but dynamic solutions
-    return generateMinimalDynamicSolutions(input)
-  }
-}
-
-/**
- * Generate minimal but dynamic solutions as absolute last resort
- */
-function generateMinimalDynamicSolutions(input: GenerateSolutionsInput): Solution[] {
-  const currentYear = new Date().getFullYear();
-  const baseId = Date.now();
-  
-  return [
-    {
-      id: `solution_${baseId}_build`,
-      needId: input.needId,
-      approach: 'build' as const,
-      title: `Custom ${input.needTitle} Solution`,
-      description: `Develop a tailored solution for ${input.companyContext.name} using modern ${currentYear} technologies and frameworks, designed specifically for ${input.companyContext.industry} industry requirements.`,
-      category: 'automation' as const,
-      estimatedCost: {
-        initial: input.companyContext.size === 'enterprise' ? 200000 : 100000,
-        monthly: input.companyContext.size === 'enterprise' ? 15000 : 8000,
-        annual: input.companyContext.size === 'enterprise' ? 180000 : 96000
-      },
-      implementationTime: { min: 6, max: 12, unit: 'months' as const },
-      roi: { breakEvenMonths: 18, threeYearReturn: 750000, confidenceScore: 0.70 },
-      risks: ['Development complexity', 'Resource requirements', 'Timeline risks'],
-      benefits: ['Full customization', 'IP ownership', 'No vendor lock-in', 'Scalable design'],
-      requirements: ['Development team', 'Technical leadership', 'Infrastructure setup'],
-      alternatives: ['Low-code platforms', 'Open-source solutions', 'SaaS alternatives'],
-      matchScore: 0.75,
-      createdAt: new Date()
-    },
-    {
-      id: `solution_${baseId}_buy`,
-      needId: input.needId,
-      approach: 'buy' as const,
-      title: `Enterprise Software Solution for ${input.needTitle}`,
-      description: `Implement a proven enterprise platform from a leading vendor, optimized for ${input.companyContext.industry} organizations with ${input.companyContext.size} scale requirements.`,
-      category: 'automation' as const,
-      vendor: 'Leading Enterprise Vendor',
-      estimatedCost: {
-        initial: input.companyContext.size === 'enterprise' ? 150000 : 75000,
-        monthly: input.companyContext.size === 'enterprise' ? 20000 : 10000,
-        annual: input.companyContext.size === 'enterprise' ? 240000 : 120000
-      },
-      implementationTime: { min: 2, max: 6, unit: 'months' as const },
-      roi: { breakEvenMonths: 15, threeYearReturn: 650000, confidenceScore: 0.85 },
-      risks: ['Vendor dependency', 'Customization limits', 'Integration challenges'],
-      benefits: ['Rapid deployment', 'Vendor support', 'Proven technology', 'Regular updates'],
-      requirements: ['Integration team', 'Training program', 'Change management'],
-      alternatives: ['Competitor platforms', 'Custom development', 'Hybrid solutions'],
-      matchScore: 0.80,
-      createdAt: new Date()
-    },
-    {
-      id: `solution_${baseId}_partner`,
-      needId: input.needId,
-      approach: 'partner' as const,
-      title: `Strategic Partnership for ${input.needTitle}`,
-      description: `Collaborate with specialized consulting firm to design and implement a solution tailored to ${input.companyContext.name}'s requirements, combining external expertise with internal capabilities.`,
-      category: 'automation' as const,
-      vendor: 'Technology Consulting Partner',
-      estimatedCost: {
-        initial: input.companyContext.size === 'enterprise' ? 175000 : 125000,
-        monthly: input.companyContext.size === 'enterprise' ? 25000 : 15000,
-        annual: input.companyContext.size === 'enterprise' ? 300000 : 180000
-      },
-      implementationTime: { min: 4, max: 8, unit: 'months' as const },
-      roi: { breakEvenMonths: 16, threeYearReturn: 600000, confidenceScore: 0.75 },
-      risks: ['Partner dependency', 'Knowledge transfer', 'Cost management'],
-      benefits: ['Expert guidance', 'Risk sharing', 'Knowledge transfer', 'Proven methodologies'],
-      requirements: ['Partnership governance', 'Internal coordination', 'Knowledge transfer plan'],
-      alternatives: ['Direct implementation', 'Different partners', 'Phased approach'],
-      matchScore: 0.78,
-      createdAt: new Date()
-    }
-  ];
-}

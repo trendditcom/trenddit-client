@@ -8,6 +8,8 @@ import { useSolutionsStore } from '../stores/solutionsStore'
 import { useNeedsStore } from '@/features/needs/stores/needsStore'
 import { SolutionCard } from './SolutionCard'
 import type { SolutionApproach } from '../types/solution'
+import { ErrorDisplay } from '@/lib/ui/error-display'
+import { ProgressLoader, SolutionCardSkeleton } from '@/lib/ui/skeleton'
 
 export function SolutionMatching() {
   const searchParams = useSearchParams()
@@ -37,7 +39,8 @@ export function SolutionMatching() {
       }
       setIsGenerating(false)
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Error generating solutions:', error)
       setIsGenerating(false)
     }
   })
@@ -110,15 +113,40 @@ export function SolutionMatching() {
   
   if (isGenerating || getSolutions.isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Generating AI-Powered Solutions
-          </h2>
-          <p className="text-gray-600">
-            Analyzing your need and matching with optimal solutions...
-          </p>
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <h1 className="text-3xl font-bold text-gray-900">Solution Marketplace</h1>
+            <p className="text-gray-600 mt-1">
+              AI-matched solutions for your business needs
+            </p>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <ProgressLoader message="Generating AI-powered solutions..." />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+            {[...Array(3)].map((_, i) => (
+              <SolutionCardSkeleton key={i} />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+  
+  if (generateSolutions.isError || getSolutions.isError) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="bg-white border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <h1 className="text-3xl font-bold text-gray-900">Solution Marketplace</h1>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <ErrorDisplay 
+            error={generateSolutions.error || getSolutions.error} 
+            onRetry={() => handleGenerateSolutions()}
+          />
         </div>
       </div>
     )

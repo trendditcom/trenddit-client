@@ -6,6 +6,7 @@
 
 import { openai } from '@/lib/ai/openai';
 import { Trend, TrendCategory } from '../types/trend';
+import { serverConfig } from '@/lib/config/server';
 
 /**
  * Generate current trends dynamically using AI
@@ -116,8 +117,18 @@ Return as JSON array with this structure:
   } catch (error) {
     console.error('Error generating dynamic trends:', error);
     
-    // If API fails, generate contextual trends based on current date
-    return generateContextualFallbackTrends(category, limit);
+    // Throw error with appropriate message based on error type
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        throw new Error(serverConfig.errors.messages.api_key_missing);
+      } else if (error.message.includes('rate limit')) {
+        throw new Error(serverConfig.errors.messages.rate_limit);
+      } else if (error.message.includes('network')) {
+        throw new Error(serverConfig.errors.messages.network_error);
+      }
+    }
+    
+    throw new Error(serverConfig.errors.messages.generation_failed);
   }
 }
 
@@ -133,104 +144,6 @@ function validateCategory(category: string): TrendCategory {
     : 'consumer';
 }
 
-/**
- * Generate contextual fallback trends if AI fails
- * These are dynamically created based on current date, not hardcoded
- */
-function generateContextualFallbackTrends(
-  category?: TrendCategory,
-  limit: number = 10
-): Trend[] {
-  const currentDate = new Date();
-  const currentMonth = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  
-  // Dynamic trend templates that adapt to current time
-  const trendTemplates = [
-    {
-      category: 'consumer' as TrendCategory,
-      title: `AI Assistants Reach New Adoption Milestone in ${currentMonth}`,
-      summary: `Latest industry data shows AI assistant adoption has crossed a significant threshold this month, with enterprise usage patterns showing unprecedented integration into daily workflows. Major platforms report usage statistics that indicate a fundamental shift in how businesses operate.`,
-      impact_score: 9,
-    },
-    {
-      category: 'competition' as TrendCategory,
-      title: `Tech Giants Announce Breakthrough AI Capabilities for ${currentMonth}`,
-      summary: `Leading technology companies have unveiled their latest AI innovations this month, introducing capabilities that push the boundaries of what's possible with artificial intelligence. The competitive landscape is rapidly evolving as companies race to capture market share.`,
-      impact_score: 8,
-    },
-    {
-      category: 'economy' as TrendCategory,
-      title: `AI Investment Trends Show Significant Shift in ${currentMonth}`,
-      summary: `Venture capital and enterprise spending on AI technologies demonstrate new patterns this month, with funding flowing into specific verticals and use cases. Market analysts identify key areas where investment is accelerating beyond predictions.`,
-      impact_score: 8,
-    },
-    {
-      category: 'regulation' as TrendCategory,
-      title: `New Regulatory Frameworks Take Effect in ${currentMonth}`,
-      summary: `Regulatory bodies worldwide are implementing updated frameworks for AI governance this month, with significant implications for enterprises operating in regulated industries. Compliance requirements are evolving rapidly as authorities respond to technological advancement.`,
-      impact_score: 10,
-    },
-    {
-      category: 'consumer' as TrendCategory,
-      title: `Enterprise AI Tools Transform Productivity Metrics in ${currentMonth}`,
-      summary: `Organizations report transformative productivity gains from AI tool adoption, with metrics from this month showing substantial improvements in key performance indicators. The data suggests a new baseline for operational efficiency is emerging.`,
-      impact_score: 7,
-    },
-    {
-      category: 'competition' as TrendCategory,
-      title: `Emerging AI Startups Challenge Incumbents in ${currentMonth}`,
-      summary: `A new wave of AI startups is disrupting established markets this month, leveraging novel approaches and specialized models to compete with tech giants. Industry observers note significant market share shifts in specific verticals.`,
-      impact_score: 7,
-    },
-    {
-      category: 'economy' as TrendCategory,
-      title: `AI Labor Market Dynamics Shift in ${currentMonth}`,
-      summary: `Employment data for this month reveals significant changes in AI-related job markets, with new roles emerging while others transform. Companies are adapting their workforce strategies to integrate AI capabilities effectively.`,
-      impact_score: 6,
-    },
-    {
-      category: 'regulation' as TrendCategory,
-      title: `Global AI Standards Convergence Accelerates in ${currentMonth}`,
-      summary: `International bodies are making progress toward unified AI standards this month, with key agreements on safety, transparency, and accountability measures. The convergence has implications for multinational operations.`,
-      impact_score: 8,
-    },
-    {
-      category: 'consumer' as TrendCategory,
-      title: `AI-Native Applications Dominate User Engagement in ${currentMonth}`,
-      summary: `User engagement metrics for this month show AI-native applications capturing significant market share from traditional software. The trend indicates a fundamental shift in user expectations and interaction patterns.`,
-      impact_score: 8,
-    },
-    {
-      category: 'competition' as TrendCategory,
-      title: `Open Source AI Models Reach Commercial Viability in ${currentMonth}`,
-      summary: `Open source AI models have achieved performance benchmarks this month that make them viable alternatives to proprietary solutions. Enterprises are reassessing their AI strategy in light of these developments.`,
-      impact_score: 9,
-    },
-  ];
-
-  // Filter by category if specified
-  let availableTrends = category 
-    ? trendTemplates.filter(t => t.category === category)
-    : trendTemplates;
-
-  // If we need more trends than templates, duplicate with variations
-  while (availableTrends.length < limit) {
-    availableTrends = [...availableTrends, ...trendTemplates];
-  }
-
-  // Generate trends with current dates
-  return availableTrends.slice(0, limit).map((template, index) => ({
-    id: `trend_fallback_${Date.now()}_${index}`,
-    title: template.title,
-    summary: template.summary,
-    category: template.category,
-    impact_score: template.impact_score,
-    source: 'Market Intelligence',
-    source_url: 'https://trenddit.com/intelligence',
-    created_at: new Date(currentDate.getTime() - (index * 24 * 60 * 60 * 1000)),
-    updated_at: new Date(),
-  }));
-}
 
 /**
  * Get a single trend by ID - generates it fresh if not found
@@ -243,10 +156,10 @@ export async function getDynamicTrendById(trendId: string): Promise<Trend | null
     if (trends.length > 0) {
       return { ...trends[0], id: trendId };
     }
-    return null;
+    throw new Error('No trend generated');
   } catch (error) {
     console.error('Error getting trend by ID:', error);
-    return null;
+    throw error; // Propagate error instead of returning null
   }
 }
 

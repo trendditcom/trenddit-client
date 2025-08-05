@@ -5,6 +5,8 @@ import { useNeedsStore } from '../stores/needsStore';
 import { trpc } from '@/lib/trpc/client';
 import { Need } from '../types/need';
 import { clsx } from 'clsx';
+import { ErrorDisplay } from '@/lib/ui/error-display';
+import { ProgressLoader, NeedCardSkeleton } from '@/lib/ui/skeleton';
 
 interface NeedsGenerationStepProps {
   onNext: () => void;
@@ -119,51 +121,25 @@ export function NeedsGenerationStep({ onNext, onPrevious }: NeedsGenerationStepP
 
       {/* Generation Status */}
       {generationStatus === 'generating' && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-lg font-medium text-blue-900">
-                Generating Business Needs...
-              </h3>
-              <p className="text-sm text-blue-700 mt-1">
-                Our AI is analyzing your company context and the selected trend to identify specific business needs. 
-                This may take a few moments.
-              </p>
-            </div>
+        <>
+          <ProgressLoader 
+            message="Analyzing your company context and trend..." 
+            showAfter={0}
+          />
+          <div className="grid grid-cols-1 gap-4">
+            {[...Array(3)].map((_, i) => (
+              <NeedCardSkeleton key={i} />
+            ))}
           </div>
-        </div>
+        </>
       )}
 
       {/* Error State */}
       {generationStatus === 'error' && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-6 w-6 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-lg font-medium text-red-900">
-                Generation Failed
-              </h3>
-              <p className="text-sm text-red-700 mt-1">
-                We encountered an issue generating your business needs. You can try again or continue with fallback needs.
-              </p>
-              <div className="mt-4">
-                <button
-                  onClick={handleRegenerate}
-                  className="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700"
-                >
-                  Try Again
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ErrorDisplay 
+          error={new Error('Failed to generate business needs')}
+          onRetry={handleRegenerate}
+        />
       )}
 
       {/* Success State - Generated Needs */}

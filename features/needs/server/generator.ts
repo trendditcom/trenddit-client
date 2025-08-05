@@ -1,6 +1,7 @@
 import { CompanyContext, Need, NeedCategory, NeedPriority } from '../types/need';
 import { getTrendById } from '@/features/trends/services/trend-service';
 import { generateCompletion } from '@/lib/ai/openai';
+import { serverConfig } from '@/lib/config/server';
 
 /**
  * Generate personalized business needs from a trend and company context
@@ -25,16 +26,18 @@ export async function generateNeedsFromTrend(
     
     // Ensure we have at least one need
     if (needs.length === 0) {
-      console.warn('AI generated zero needs, falling back to dynamic generation');
-      return await generateDynamicFallbackNeeds(trend, companyContext, maxNeeds);
+      throw new Error('AI generated zero needs. Please try again with different parameters.');
     }
     
     return needs;
   } catch (error) {
     console.error('AI need generation failed:', error);
-    // Fallback to dynamic generation instead of templates
-    console.log('Using dynamic fallback need generation');
-    return await generateDynamicFallbackNeeds(trend, companyContext, maxNeeds);
+    
+    // Re-throw with appropriate error message
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(serverConfig.errors.messages.generation_failed);
   }
 }
 
@@ -142,102 +145,6 @@ function parseNeedsFromCompletion(completion: string, trendId: string, companyId
   }
 }
 
-/**
- * Dynamic fallback need generation when primary AI fails
- * Uses a simplified AI prompt to ensure we never return hardcoded templates
- */
-async function generateDynamicFallbackNeeds(trend: any, companyContext: CompanyContext, maxNeeds: number): Promise<Need[]> {
-  const currentYear = new Date().getFullYear();
-  
-  const fallbackPrompt = `Generate ${maxNeeds} business needs for this company based on this AI trend. Current year: ${currentYear}.
-
-TREND: ${trend.title}
-CATEGORY: ${trend.category}
-SUMMARY: ${trend.summary}
-
-COMPANY:
-- Name: ${companyContext.name}
-- Industry: ${companyContext.industry}
-- Size: ${companyContext.size}
-- Challenges: ${companyContext.currentChallenges?.join(', ') || 'Standard business challenges'}
-- Goals: ${companyContext.primaryGoals?.join(', ') || 'Growth and efficiency'}
-
-Generate practical, specific needs that this company should address given this trend.
-
-Return as JSON:
-{
-  "needs": [
-    {
-      "title": "Specific need title",
-      "description": "2-3 sentence description",
-      "category": "automation|data_insights|customer_experience|operational_efficiency|competitive_advantage|risk_management|cost_reduction|innovation",
-      "priority": "low|medium|high|critical",
-      "impactScore": 7,
-      "effortScore": 5,
-      "urgencyScore": 6,
-      "stakeholders": ["team1", "team2"],
-      "businessValue": "Expected business value statement",
-      "risks": ["risk1", "risk2"],
-      "successMetrics": ["metric1", "metric2"]
-    }
-  ]
-}`;
-
-  try {
-    const completion = await generateCompletion(fallbackPrompt);
-    return parseNeedsFromCompletion(completion, trend.id, companyContext.id!);
-  } catch (error) {
-    console.error('Dynamic fallback needs generation failed:', error);
-    
-    // Absolute final fallback - generate minimal dynamic needs
-    return generateMinimalDynamicNeeds(trend, companyContext, maxNeeds);
-  }
-}
-
-/**
- * Generate minimal but dynamic needs as absolute last resort
- */
-function generateMinimalDynamicNeeds(trend: any, companyContext: CompanyContext, maxNeeds: number): Need[] {
-  const currentYear = new Date().getFullYear();
-  const baseId = Date.now();
-  
-  const needTypes = [
-    {
-      category: 'automation' as NeedCategory,
-      title: `Implement ${trend.title} Automation`,
-      description: `Leverage the opportunities from ${trend.title} to automate key processes at ${companyContext.name}, improving efficiency and reducing manual work in ${currentYear}.`
-    },
-    {
-      category: 'data_insights' as NeedCategory,
-      title: `Develop ${trend.title} Analytics`,
-      description: `Create analytics capabilities to understand the impact of ${trend.title} on ${companyContext.name}'s ${companyContext.industry} operations and make data-driven decisions.`
-    },
-    {
-      category: 'competitive_advantage' as NeedCategory,
-      title: `Leverage ${trend.title} for Competitive Edge`,
-      description: `Position ${companyContext.name} ahead of competitors by strategically adopting capabilities related to ${trend.title} in the ${companyContext.industry} market.`
-    }
-  ];
-
-  return needTypes.slice(0, maxNeeds).map((needType, index) => ({
-    id: `dynamic_need_${baseId}_${index}`,
-    trendId: trend.id,
-    companyId: companyContext.id!,
-    title: needType.title,
-    description: needType.description,
-    category: needType.category,
-    priority: 'medium' as NeedPriority,
-    impactScore: 7,
-    effortScore: 6,
-    urgencyScore: 6,
-    stakeholders: ['Management', 'IT', 'Operations'],
-    businessValue: `Expected to improve ${companyContext.name}'s competitive position and operational efficiency`,
-    risks: ['Implementation complexity', 'Change management', 'Resource allocation'],
-    successMetrics: ['Performance improvement', 'Cost reduction', 'User adoption rate'],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }));
-}
 
 /**
  * Validate and sanitize category values

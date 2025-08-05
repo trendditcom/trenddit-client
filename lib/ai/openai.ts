@@ -1,5 +1,7 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
+import { serverConfig } from '@/lib/config/server';
+import { withRetry } from '@/lib/utils/retry';
 
 export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -17,30 +19,47 @@ export type TrendAnalysis = z.infer<typeof TrendAnalysisSchema>;
 
 export async function generateCompletion(prompt: string): Promise<string> {
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an AI business consultant helping enterprises identify and prioritize business needs. Always respond with valid JSON only.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.7,
-      max_tokens: 2000,
+    return await withRetry(async () => {
+      const response = await openai.chat.completions.create({
+        model: serverConfig.ai.model,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an AI business consultant helping enterprises identify and prioritize business needs. Always respond with valid JSON only.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: serverConfig.ai.temperature,
+        max_tokens: serverConfig.ai.max_tokens,
+      });
+
+      const content = response.choices[0].message.content;
+      if (!content) throw new Error('No response from AI');
+
+      return content;
+    }, {
+      onRetry: (attempt, error) => {
+        console.log(`Retrying OpenAI request (attempt ${attempt}):`, error.message);
+      }
     });
-
-    const content = response.choices[0].message.content;
-    if (!content) throw new Error('No response from AI');
-
-    return content;
   } catch (error) {
     console.error('Error generating AI completion:', error);
-    throw new Error('AI generation failed');
+    
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        throw new Error(serverConfig.errors.messages.api_key_missing);
+      } else if (error.message.includes('rate limit')) {
+        throw new Error(serverConfig.errors.messages.rate_limit);
+      } else if (error.message.includes('network')) {
+        throw new Error(serverConfig.errors.messages.network_error);
+      }
+    }
+    
+    throw new Error(serverConfig.errors.messages.generation_failed);
   }
 }
 
@@ -50,7 +69,8 @@ export async function analyzeTrend(
   category: string
 ): Promise<TrendAnalysis> {
   try {
-    const prompt = `Analyze this ${category} trend for enterprise impact:
+    return await withRetry(async () => {
+      const prompt = `Analyze this ${category} trend for enterprise impact:
 
 Title: ${title}
 Summary: ${summary}
@@ -64,37 +84,46 @@ Provide analysis with:
 
 Keep response concise and actionable.`;
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an AI engineering advisor helping enterprises understand and adopt AI trends.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.7,
-      max_tokens: 500,
+      const response = await openai.chat.completions.create({
+        model: serverConfig.ai.model,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an AI engineering advisor helping enterprises understand and adopt AI trends.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: serverConfig.ai.temperature,
+        max_tokens: 500,
+      });
+
+      const content = response.choices[0].message.content;
+      if (!content) throw new Error('No response from AI');
+
+      const parsed = JSON.parse(content);
+      return TrendAnalysisSchema.parse(parsed);
+    }, {
+      onRetry: (attempt, error) => {
+        console.log(`Retrying trend analysis (attempt ${attempt}):`, error.message);
+      }
     });
-
-    const content = response.choices[0].message.content;
-    if (!content) throw new Error('No response from AI');
-
-    const parsed = JSON.parse(content);
-    return TrendAnalysisSchema.parse(parsed);
   } catch (error) {
     console.error('Error analyzing trend:', error);
-    // Return fallback analysis
-    return {
-      businessImplications: 'Analysis temporarily unavailable. This trend may impact your organization.',
-      technicalRequirements: 'Technical assessment pending.',
-      implementationTimeline: '3-6 months',
-      riskFactors: ['Analysis uncertainty', 'Resource requirements unclear'],
-      impactScore: 5,
-    };
+    
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        throw new Error(serverConfig.errors.messages.api_key_missing);
+      } else if (error.message.includes('rate limit')) {
+        throw new Error(serverConfig.errors.messages.rate_limit);
+      } else if (error.message.includes('network')) {
+        throw new Error(serverConfig.errors.messages.network_error);
+      }
+    }
+    
+    throw new Error(serverConfig.errors.messages.generation_failed);
   }
 }

@@ -28,6 +28,8 @@ import {
   ChevronUp,
   Search
 } from 'lucide-react';
+import { ErrorDisplay } from '@/lib/ui/error-display';
+import { TrendCardSkeleton, ProgressLoader } from '@/lib/ui/skeleton';
 
 interface CompanyProfile {
   industry: string;
@@ -427,11 +429,10 @@ export default function TrendsPage() {
 
             {/* Error Display */}
             {error && (
-              <div className="rounded-md bg-red-50 p-4">
-                <p className="text-sm text-red-800">
-                  Failed to load trends. Please try again later.
-                </p>
-              </div>
+              <ErrorDisplay 
+                error={error} 
+                onRetry={() => utils.trends.list.invalidate()}
+              />
             )}
 
             {/* Export Success */}
@@ -456,19 +457,14 @@ export default function TrendsPage() {
               </div>
 
               {isLoading ? (
-                <div className="space-y-4">
-                  {[...Array(6)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="rounded-lg border border-gray-200 bg-white p-6 animate-pulse"
-                    >
-                      <div className="h-4 bg-gray-200 rounded w-20 mb-3"></div>
-                      <div className="h-6 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-4 bg-gray-200 rounded mb-1"></div>
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <ProgressLoader message="Loading market trends..." />
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[...Array(6)].map((_, i) => (
+                      <TrendCardSkeleton key={i} />
+                    ))}
+                  </div>
+                </>
               ) : viewMode === 'cards' ? (
                 <EnhancedTrendGrid
                   trends={filteredTrends}
