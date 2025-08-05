@@ -15,8 +15,6 @@ interface EnhancedTrendGridProps {
   companyProfile?: CompanyProfile;
   onConversationStart?: (trendId: string) => void;
   onGenerateNeeds?: (trendId: string) => void;
-  onAnalyzeTrend?: (trendId: string) => void;
-  analyzingTrendId?: string | null;
 }
 
 export function EnhancedTrendGrid({ 
@@ -24,8 +22,6 @@ export function EnhancedTrendGrid({
   companyProfile,
   onConversationStart,
   onGenerateNeeds,
-  onAnalyzeTrend,
-  analyzingTrendId
 }: EnhancedTrendGridProps) {
   if (trends.length === 0) {
     return (
@@ -45,8 +41,6 @@ export function EnhancedTrendGrid({
           companyProfile={companyProfile}
           onConversationStart={onConversationStart}
           onGenerateNeeds={onGenerateNeeds}
-          onAnalyzeTrend={onAnalyzeTrend}
-          isAnalyzing={analyzingTrendId === trend.id}
         />
       ))}
     </div>

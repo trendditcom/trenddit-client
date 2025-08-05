@@ -11,7 +11,7 @@ import { Button } from '@/lib/ui/button';
 import { Badge } from '@/lib/ui/badge';
 import { trpc } from '@/lib/trpc/client';
 import { Trend } from '@/features/trends/types/trend';
-import { Loader2, MessageCircle, TrendingUp, AlertTriangle, CheckCircle, Brain, Target, Zap } from 'lucide-react';
+import { Loader2, MessageCircle, TrendingUp, AlertTriangle, CheckCircle, Brain, Zap } from 'lucide-react';
 
 interface IntelligentTrendCardProps {
   trend: Trend;
@@ -22,7 +22,6 @@ interface IntelligentTrendCardProps {
   };
   onConversationStart?: (trendId: string) => void;
   onGenerateNeeds?: (trendId: string) => void;
-  onAnalyzeTrend?: (trendId: string) => void;
   isAnalyzing?: boolean;
 }
 
@@ -31,7 +30,6 @@ export function IntelligentTrendCard({
   companyProfile,
   onConversationStart,
   onGenerateNeeds,
-  onAnalyzeTrend,
   isAnalyzing = false
 }: IntelligentTrendCardProps) {
   const [showIntelligence, setShowIntelligence] = useState(false);
@@ -195,22 +193,6 @@ export function IntelligentTrendCard({
             </Button>
           )}
 
-          {onAnalyzeTrend && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onAnalyzeTrend(trend.id)}
-              disabled={isAnalyzing}
-              className="flex items-center gap-1 text-xs h-8 px-2"
-            >
-              {isAnalyzing ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Target className="h-3 w-3" />
-              )}
-              Impact
-            </Button>
-          )}
 
           <Button
             variant="outline"

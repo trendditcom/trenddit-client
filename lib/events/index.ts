@@ -48,7 +48,6 @@ export const events = new EventBus();
 export const EVENTS = {
   // Trend events
   TREND_VIEWED: 'trend.viewed',
-  TREND_ANALYZED: 'trend.analyzed',
   TREND_EXPORTED: 'trend.exported',
   
   // Need events

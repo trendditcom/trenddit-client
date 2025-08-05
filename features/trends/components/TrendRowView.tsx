@@ -28,8 +28,6 @@ interface TrendRowViewProps {
   companyProfile?: CompanyProfile;
   onConversationStart?: (trendId: string) => void;
   onGenerateNeeds?: (trendId: string) => void;
-  onAnalyzeTrend?: (trendId: string) => void;
-  analyzingTrendId?: string | null;
 }
 
 export function TrendRowView({ 
@@ -37,8 +35,6 @@ export function TrendRowView({
   companyProfile,
   onConversationStart,
   onGenerateNeeds,
-  onAnalyzeTrend,
-  analyzingTrendId
 }: TrendRowViewProps) {
   const [expandedTrend, setExpandedTrend] = useState<string | null>(null);
   const [intelligenceData, setIntelligenceData] = useState<Record<string, any>>({});
@@ -108,7 +104,6 @@ export function TrendRowView({
       {trends.map((trend) => {
         const isExpanded = expandedTrend === trend.id;
         const intelligence = intelligenceData[trend.id];
-        const isAnalyzing = analyzingTrendId === trend.id;
 
         return (
           <div 
@@ -290,22 +285,6 @@ export function TrendRowView({
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-3">
-                    {onAnalyzeTrend && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onAnalyzeTrend(trend.id)}
-                        disabled={isAnalyzing}
-                        className="flex items-center gap-2"
-                      >
-                        {isAnalyzing ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <TrendingUp className="h-4 w-4" />
-                        )}
-                        Analyze Impact
-                      </Button>
-                    )}
 
                     <Button
                       size="sm"

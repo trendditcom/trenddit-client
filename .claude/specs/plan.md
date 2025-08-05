@@ -2049,6 +2049,62 @@ npm run build      # Test production build
 - Input field clarity: Proper domain field labeling ✅
 - Code quality: Zero linting/type errors ✅
 
+#### Phase 5.1: Feature Simplification & UI Cleanup - COMPLETE ✅
+**Date: 2025-08-05**  
+**Streamlined User Experience with Feature Removal**
+
+**User Prompt That Initiated Changes:**
+- _"Remove the impact / analyze impact button and feature code safely without impacting other features."_
+
+**Feature Removal Completed:**
+
+**1. UI Components Cleanup**
+   - ✅ **IntelligentTrendCard**: Removed onAnalyzeTrend prop and Impact button with Target icon
+   - ✅ **EnhancedTrendGrid**: Removed onAnalyzeTrend and analyzingTrendId prop passing
+   - ✅ **TrendRowView**: Removed "Analyze Impact" button and related loading states
+   - ✅ **Trends Pages**: Removed analyzingTrendId state management and handleAnalyzeTrend function
+
+**2. Backend API Cleanup**
+   - ✅ **Trends Router**: Removed analyze mutation endpoint completely
+   - ✅ **OpenAI Integration**: Removed analyzeTrend function and TrendAnalysisSchema
+   - ✅ **Event System**: Removed TREND_ANALYZED event constant
+   - ✅ **Import Cleanup**: Removed unused Target icon and Zod imports
+
+**3. Safe Feature Preservation**
+   - ✅ **AI Scan Button**: Retained with Brain icon for intelligent analysis
+   - ✅ **Chat Button**: Preserved for conversational AI interface
+   - ✅ **Needs Button**: Maintained for need generation workflow
+   - ✅ **Other Features**: All existing functionality remains intact
+
+**Files Modified:**
+- `/features/market-intelligence/components/IntelligentTrendCard.tsx` - Removed Impact button
+- `/features/trends/components/EnhancedTrendGrid.tsx` - Removed analyze props
+- `/features/trends/components/TrendRowView.tsx` - Removed Analyze Impact button
+- `/app/trends/page.tsx` - Removed analyze state and handlers
+- `/app/trends/enhanced-page.tsx` - Removed analyze functionality
+- `/features/trends/server/router.ts` - Removed analyze endpoint
+- `/lib/ai/openai.ts` - Removed analyzeTrend function and schema
+- `/lib/events/index.ts` - Removed TREND_ANALYZED event
+
+**Technical Achievements:**
+- ✅ **Clean Removal**: Zero breaking changes to other features
+- ✅ **Code Quality**: ESLint clean with zero warnings or errors
+- ✅ **Type Safety**: All TypeScript compilation errors resolved
+- ✅ **Feature Independence**: Demonstrated safe feature removal capability
+- ✅ **UI Simplification**: Streamlined interface with focused functionality
+
+**Impact Assessment:**
+- **Reduced Complexity**: Simplified UI with clearer action hierarchy
+- **Maintained Functionality**: All core features (AI Scan, Chat, Needs) preserved
+- **Better UX**: Less cluttered interface with focused user actions
+- **Code Maintainability**: Reduced technical debt and unused code paths
+
+**Success Metrics:**
+- Feature removal: 100% complete without breaking changes ✅
+- Code quality: Zero linting/TypeScript errors ✅
+- Other features: 100% preserved and functional ✅
+- UI clarity: Simplified action buttons with clear purposes ✅
+
 ### 🎯 Summary
 
 **Status: Production-Ready AI-First Intelligence Platform**

@@ -53,7 +53,6 @@ export default function TrendsPage() {
   const [conversationMode, setConversationMode] = useState(false);
   const [currentTopic, setCurrentTopic] = useState('');
   const [conversationHistory, setConversationHistory] = useState<string[]>([]);
-  const [analyzingTrendId, setAnalyzingTrendId] = useState<string | null>(null);
 
   // Company profile state
   const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({
@@ -118,7 +117,6 @@ export default function TrendsPage() {
   }, [allTrends]);
 
   const exportMutation = trpc.trends.export.useMutation();
-  const analyzeTrendMutation = trpc.trends.analyze.useMutation();
   const regenerateTrendsMutation = trpc.trends.regenerateForProfile.useMutation({
     onSuccess: () => {
       utils.trends.list.invalidate();
@@ -205,15 +203,6 @@ export default function TrendsPage() {
     exportMutation.mutate({ format: 'pdf', trendIds });
   };
 
-  const handleAnalyzeTrend = (trendId: string) => {
-    setAnalyzingTrendId(trendId);
-    analyzeTrendMutation.mutate(
-      { trendId },
-      {
-        onSettled: () => setAnalyzingTrendId(null),
-      }
-    );
-  };
 
   const handleGenerateNeeds = (trendId: string) => {
     router.push(`/needs?trendId=${trendId}`);
@@ -646,8 +635,6 @@ export default function TrendsPage() {
                   companyProfile={companyProfile}
                   onConversationStart={handleConversationStart}
                   onGenerateNeeds={handleGenerateNeeds}
-                  onAnalyzeTrend={handleAnalyzeTrend}
-                  analyzingTrendId={analyzingTrendId}
                 />
               ) : (
                 <TrendRowView
@@ -655,8 +642,6 @@ export default function TrendsPage() {
                   companyProfile={companyProfile}
                   onConversationStart={handleConversationStart}
                   onGenerateNeeds={handleGenerateNeeds}
-                  onAnalyzeTrend={handleAnalyzeTrend}
-                  analyzingTrendId={analyzingTrendId}
                 />
               )}
             </div>
