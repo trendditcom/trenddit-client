@@ -225,7 +225,7 @@ We've transformed from basic AI features to a true **AI-first intelligence platf
    - Context-aware recommendations
 
 4. **Live Intelligence Dashboard**
-   - Navigate to `/intelligence` for the complete AI-first experience
+   - Navigate to `/trends` for the complete AI-first intelligence experience
    - **Real-time market synthesis**: Ask any market question and get live AI analysis
    - **Live Intelligence Active** indicator shows real-time data processing
    - **Intelligence Dashboard** button from trends page for seamless access
@@ -407,7 +407,7 @@ We've transformed from basic AI features to a true **AI-first intelligence platf
 #### Complete AI-First Intelligence Experience (5-10 minutes)
 
 1. **Intelligence Dashboard Overview**
-   - Navigate to `/intelligence` for the complete AI-first platform
+   - Navigate to `/trends` for the complete AI-first intelligence platform
    - View **Live Intelligence Dashboard** with real-time metrics:
      - **Active Insights**: Current number of processed intelligence items
      - **Average Confidence**: AI confidence across all analyses

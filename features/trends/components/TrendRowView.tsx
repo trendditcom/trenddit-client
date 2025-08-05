@@ -42,11 +42,13 @@ export function TrendRowView({
 }: TrendRowViewProps) {
   const [expandedTrend, setExpandedTrend] = useState<string | null>(null);
   const [intelligenceData, setIntelligenceData] = useState<Record<string, any>>({});
+  const [currentAnalysisTrendId, setCurrentAnalysisTrendId] = useState<string | null>(null);
 
   const predictRelevance = trpc.intelligence.predictTrendRelevance.useMutation({
-    onSuccess: (data, variables) => {
-      const trendId = variables.trendId || 'unknown';
-      setIntelligenceData(prev => ({ ...prev, [trendId]: data }));
+    onSuccess: (data) => {
+      if (currentAnalysisTrendId) {
+        setIntelligenceData(prev => ({ ...prev, [currentAnalysisTrendId]: data }));
+      }
     },
     onError: (error) => {
       console.error('Relevance prediction failed:', error);
@@ -56,8 +58,8 @@ export function TrendRowView({
   const handleIntelligentAnalysis = async (trendId: string) => {
     if (!companyProfile) return;
     
+    setCurrentAnalysisTrendId(trendId);
     predictRelevance.mutate({
-      trendId,
       companyProfile,
       timeHorizon: '6months',
       confidenceThreshold: 0.7,
@@ -164,7 +166,7 @@ export function TrendRowView({
                       disabled={predictRelevance.isPending}
                       className="text-xs py-1 px-2 h-auto"
                     >
-                      {predictRelevance.isPending && predictRelevance.variables?.trendId === trend.id ? (
+                      {predictRelevance.isPending && currentAnalysisTrendId === trend.id ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
                       ) : (
                         'AI Analysis'
