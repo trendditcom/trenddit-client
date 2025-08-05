@@ -11,7 +11,7 @@ import { Button } from '@/lib/ui/button';
 import { Badge } from '@/lib/ui/badge';
 import { trpc } from '@/lib/trpc/client';
 import { Trend } from '@/features/trends/types/trend';
-import { Loader2, MessageCircle, TrendingUp, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Loader2, MessageCircle, TrendingUp, AlertTriangle, CheckCircle, Brain, Target, Zap } from 'lucide-react';
 
 interface IntelligentTrendCardProps {
   trend: Trend;
@@ -177,21 +177,21 @@ export function IntelligentTrendCard({
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 pt-2">
+        <div className="flex items-center gap-1 pt-2 flex-wrap">
           {companyProfile && !showIntelligence && (
             <Button
               variant="outline"
               size="sm"
               onClick={handleIntelligentAnalysis}
               disabled={predictRelevance.isPending}
-              className="flex items-center gap-2"
+              className="flex items-center gap-1 text-xs h-8 px-2"
             >
               {predictRelevance.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                <TrendingUp className="h-4 w-4" />
+                <Brain className="h-3 w-3" />
               )}
-              AI Analysis
+              AI Scan
             </Button>
           )}
 
@@ -201,14 +201,14 @@ export function IntelligentTrendCard({
               size="sm"
               onClick={() => onAnalyzeTrend(trend.id)}
               disabled={isAnalyzing}
-              className="flex items-center gap-2"
+              className="flex items-center gap-1 text-xs h-8 px-2"
             >
               {isAnalyzing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                <TrendingUp className="h-4 w-4" />
+                <Target className="h-3 w-3" />
               )}
-              Analyze Impact
+              Impact
             </Button>
           )}
 
@@ -216,10 +216,10 @@ export function IntelligentTrendCard({
             variant="outline"
             size="sm"
             onClick={() => onConversationStart?.(trend.id)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 text-xs h-8 px-2"
           >
-            <MessageCircle className="h-4 w-4" />
-            Discuss
+            <MessageCircle className="h-3 w-3" />
+            Chat
           </Button>
 
           <Button
@@ -232,14 +232,25 @@ export function IntelligentTrendCard({
                 window.location.href = `/needs?trendId=${trend.id}`;
               }
             }}
+            className="flex items-center gap-1 text-xs h-8 px-2"
           >
-            Generate Needs
+            <Zap className="h-3 w-3" />
+            Needs
           </Button>
         </div>
 
         {/* Metadata */}
         <div className="text-xs text-gray-500 flex items-center justify-between pt-2 border-t border-gray-100">
-          <span>Source: {trend.source}</span>
+          <span>
+            Source: <a 
+              href={trend.source_url || `https://google.com/search?q=${encodeURIComponent(trend.source)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 underline"
+            >
+              {trend.source}
+            </a>
+          </span>
           <span>{new Date(trend.created_at).toLocaleDateString()}</span>
         </div>
       </CardContent>

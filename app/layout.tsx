@@ -32,7 +32,7 @@ export default function RootLayout({
                         <path d="M9.5 2A2.5 2.5 0 0 0 7 4.5v15A2.5 2.5 0 0 0 9.5 22h5a2.5 2.5 0 0 0 2.5-2.5v-15A2.5 2.5 0 0 0 14.5 2h-5Z"/>
                         <path d="M12 6h.01M12 12h.01M12 18h.01"/>
                       </svg>
-                      AI Intelligence
+                      Trends
                     </a>
                     <a href="/needs" className="text-gray-700 hover:text-indigo-600 font-medium">
                       Needs

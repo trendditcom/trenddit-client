@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { publicProcedure, protectedProcedure, router } from '@/server/trpc';
 import { TrendCategorySchema } from '../types/trend';
 import { generateDynamicTrends, getDynamicTrendById } from './trend-generator';
+import { getTrends, getTrendById } from '../services/trend-service';
 import { analyzeTrend } from '@/lib/ai/openai';
 import { events, EVENTS } from '@/lib/events';
 
@@ -18,12 +19,20 @@ export const trendsRouter = router({
     )
     .query(async ({ input }) => {
       try {
-        // Always generate mixed category dataset for client-side filtering
-        // This ensures balanced distribution and instant filter responses
-        const trends = await generateDynamicTrends(undefined, input.limit);
+        // Use the caching service for trends - it will cache in memory and localStorage
+        // If refresh is requested, we bypass cache and generate fresh
+        if (input.refresh) {
+          const { clearTrendsCache } = await import('../services/trend-service');
+          clearTrendsCache();
+        }
+        
+        // Get trends through the caching service
+        const trends = await getTrends(undefined, input.limit);
+        
+        // For client-side caching, we'll include cache metadata
         return trends;
       } catch (error) {
-        console.error('Failed to generate dynamic trends:', error);
+        console.error('Failed to fetch trends:', error);
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Failed to fetch trends',
@@ -39,8 +48,8 @@ export const trendsRouter = router({
     )
     .query(async ({ input }) => {
       try {
-        // Get the trend dynamically
-        const trend = await getDynamicTrendById(input.trendId);
+        // Use the caching service first
+        const trend = await getTrendById(input.trendId);
         
         if (!trend) {
           throw new TRPCError({
@@ -68,8 +77,8 @@ export const trendsRouter = router({
     )
     .mutation(async ({ input }) => {
       try {
-        // Get the trend dynamically
-        const trend = await getDynamicTrendById(input.trendId);
+        // Get the trend from cache first
+        const trend = await getTrendById(input.trendId);
         
         if (!trend) {
           throw new TRPCError({
@@ -125,6 +134,58 @@ export const trendsRouter = router({
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Failed to export trends',
+        });
+      }
+    }),
+
+  regenerateForProfile: publicProcedure
+    .input(
+      z.object({
+        companyProfile: z.object({
+          industry: z.string(),
+          size: z.enum(['startup', 'small', 'medium', 'enterprise']),
+          techMaturity: z.enum(['low', 'medium', 'high']),
+          domain: z.string().optional(),
+          priorities: z.array(z.string()).optional(),
+        }),
+        filters: z.object({
+          category: z.string().optional(),
+          industry: z.string(),
+          priorities: z.array(z.string()).optional(),
+        }).optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      try {
+        // Generate personalized trends based on company profile
+        const trends = await generateDynamicTrends(
+          input.filters?.category as any, 
+          20,
+          {
+            industry: input.companyProfile.industry,
+            size: input.companyProfile.size,
+            techMaturity: input.companyProfile.techMaturity,
+            domain: input.companyProfile.domain,
+            priorities: input.companyProfile.priorities,
+          }
+        );
+
+        // Emit event for regeneration
+        events.emitEvent('trend.regenerated', {
+          companyProfile: input.companyProfile,
+          trendsCount: trends.length,
+        });
+
+        return {
+          success: true,
+          message: `Generated ${trends.length} personalized trends`,
+          trends,
+        };
+      } catch (error) {
+        console.error('Failed to regenerate trends for profile:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to regenerate trends',
         });
       }
     }),

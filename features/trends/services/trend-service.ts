@@ -28,19 +28,27 @@ export async function getTrends(category?: TrendCategory, limit: number = 20): P
   }
   
   try {
-    // Dynamic import to avoid client-side import issues
-    const { generateDynamicTrends } = await import('../server/trend-generator');
+    // Check if we're on the server-side or client-side
+    const isServer = typeof window === 'undefined';
     
-    // Generate fresh mixed dataset (always mixed, regardless of category param)
-    const trends = await generateDynamicTrends(undefined, 20); // Always get mixed set of 20
-    
-    // Cache in both memory and localStorage
-    const cacheData = { trends, timestamp: Date.now() };
-    masterTrendsCache = cacheData;
-    saveToLocalStorage(cacheData);
-    
-    // Return filtered results
-    return filterTrendsByCategory(trends, category, limit);
+    if (isServer) {
+      // On server-side, use the trend generator directly
+      const { generateDynamicTrends } = await import('../server/trend-generator');
+      
+      // Generate fresh mixed dataset (always mixed, regardless of category param)
+      const trends = await generateDynamicTrends(undefined, 20); // Always get mixed set of 20
+      
+      // Cache in memory only (no localStorage on server)
+      const cacheData = { trends, timestamp: Date.now() };
+      masterTrendsCache = cacheData;
+      
+      // Return filtered results
+      return filterTrendsByCategory(trends, category, limit);
+    } else {
+      // On client-side, this should not happen as trends should be fetched via tRPC
+      // But if it does, return empty array or cached data
+      throw new Error('Trend generation should happen on server-side via tRPC');
+    }
   } catch (error) {
     console.error('Error fetching trends:', error);
     
@@ -84,10 +92,16 @@ export async function getTrendById(trendId: string): Promise<Trend | null> {
       }
     }
     
-    // If not in cache, generate/fetch it
-    const { getDynamicTrendById } = await import('../server/trend-generator');
-    const trend = await getDynamicTrendById(trendId);
-    return trend;
+    // If not in cache, generate/fetch it (server-side only)
+    const isServer = typeof window === 'undefined';
+    if (isServer) {
+      const { getDynamicTrendById } = await import('../server/trend-generator');
+      const trend = await getDynamicTrendById(trendId);
+      return trend;
+    } else {
+      // On client-side, trend should be fetched via tRPC
+      return null;
+    }
   } catch (error) {
     console.error('Error fetching trend by ID:', error);
     throw error; // Propagate error for proper handling

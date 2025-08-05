@@ -7,15 +7,25 @@
 import { openai } from '@/lib/ai/openai';
 import { Trend, TrendCategory } from '../types/trend';
 
+interface CompanyProfile {
+  industry: string;
+  size: 'startup' | 'small' | 'medium' | 'enterprise';
+  techMaturity: 'low' | 'medium' | 'high';
+  domain?: string;
+  priorities?: string[];
+}
+
 /**
  * Generate current trends dynamically using AI with balanced category distribution
  * @param category - Optional category filter (for backward compatibility, but generates mixed regardless)
  * @param limit - Number of trends to generate (default 20 for balanced mix)
+ * @param companyProfile - Optional company profile for personalized trends
  * @returns Array of fresh, current trends with balanced category distribution
  */
 export async function generateDynamicTrends(
   category?: TrendCategory,
-  limit: number = 20
+  limit: number = 20,
+  companyProfile?: CompanyProfile
 ): Promise<Trend[]> {
   const currentDate = new Date();
   const currentMonth = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
@@ -32,6 +42,20 @@ export async function generateDynamicTrends(
 
 ENSURE BALANCED DISTRIBUTION: The response must contain ${trendsPerCategory} trends from each category for a total of ${limit} trends.`;
 
+  // Build personalization context
+  const personalizationContext = companyProfile ? `
+PERSONALIZATION CONTEXT:
+- Target company: ${companyProfile.industry} industry, ${companyProfile.size} size, ${companyProfile.techMaturity} tech maturity
+${companyProfile.domain ? `- Company domain: ${companyProfile.domain}` : ''}
+${companyProfile.priorities ? `- Key priorities: ${companyProfile.priorities.join(', ')}` : ''}
+
+PERSONALIZATION REQUIREMENTS:
+- Prioritize trends most relevant to ${companyProfile.industry} companies
+- Consider the scale and resources of ${companyProfile.size} companies
+- Match trends to ${companyProfile.techMaturity} technology adoption patterns
+- Include specific implications for this company profile in summaries
+` : '';
+
   const prompt = `You are a leading AI and technology market analyst with real-time knowledge of current events. Generate ${limit} current, relevant AI/technology trends for ${currentMonth} with BALANCED CATEGORY DISTRIBUTION.
 
 CRITICAL REQUIREMENTS:
@@ -41,6 +65,9 @@ CRITICAL REQUIREMENTS:
 - Include specific company names, products, and initiatives that are relevant TODAY
 - Mix breaking news with ongoing developments
 - MUST include balanced distribution across all 4 categories
+${companyProfile ? '- Personalize trends for the specified company profile' : ''}
+
+${personalizationContext}
 
 ${categoryPrompt}
 

@@ -36,6 +36,8 @@ interface CompanyProfile {
   industry: string;
   size: 'startup' | 'small' | 'medium' | 'enterprise';
   techMaturity: 'low' | 'medium' | 'high';
+  domain?: string;
+  priorities?: string[];
 }
 
 type ViewMode = 'cards' | 'rows';
@@ -58,21 +60,75 @@ export default function TrendsPage() {
     industry: 'technology',
     size: 'medium', 
     techMaturity: 'high',
+    domain: '',
+    priorities: ['scalability', 'innovation'],
   });
 
   // Feature flags
   const exportEnabled = useFeatureFlag('trends.export');
 
+  // State for refresh control
+  const [forceRefresh, setForceRefresh] = useState(false);
+
+  // Try to get initial data from localStorage
+  const getInitialTrends = () => {
+    try {
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem('trenddit_master_trends_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          const isValid = parsed.timestamp && (Date.now() - parsed.timestamp) < (60 * 60 * 1000); // 1 hour
+          if (isValid && parsed.trends && parsed.trends.length > 0) {
+            return parsed.trends;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load cached trends:', error);
+    }
+    return undefined;
+  };
+
   // API queries and mutations - always fetch mixed dataset for client-side filtering
   const { data: allTrends, isLoading, error } = trpc.trends.list.useQuery({
     limit: 20, // Always get mixed dataset of 20 trends
+    refresh: forceRefresh, // Force refresh when needed
   }, {
-    staleTime: 30 * 60 * 1000, // 30 minutes - prevent auto-refresh
-    gcTime: 60 * 60 * 1000, // 1 hour - keep in cache longer (renamed from cacheTime)
+    staleTime: 60 * 60 * 1000, // 1 hour - trends stay fresh for longer
+    gcTime: 24 * 60 * 60 * 1000, // 24 hours - keep in cache much longer
+    enabled: true, // Always enabled
+    refetchOnWindowFocus: false, // Don't refetch when window gains focus
+    refetchOnReconnect: false, // Don't refetch on reconnect
+    initialData: getInitialTrends(), // Use cached data as initial data
   });
+
+  // Cache trends in localStorage when they're fetched
+  React.useEffect(() => {
+    if (allTrends && allTrends.length > 0) {
+      try {
+        const cacheData = {
+          trends: allTrends,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem('trenddit_master_trends_cache', JSON.stringify(cacheData));
+      } catch (error) {
+        console.warn('Failed to cache trends in localStorage:', error);
+      }
+    }
+  }, [allTrends]);
 
   const exportMutation = trpc.trends.export.useMutation();
   const analyzeTrendMutation = trpc.trends.analyze.useMutation();
+  const regenerateTrendsMutation = trpc.trends.regenerateForProfile.useMutation({
+    onSuccess: () => {
+      utils.trends.list.invalidate();
+    },
+    onError: (error) => {
+      console.error('Regenerate trends failed:', error);
+      // Fallback to regular refresh
+      handleRefreshTrends();
+    },
+  });
 
   // Intelligence queries
   const dashboardQuery = trpc.intelligence.getIntelligenceDashboard.useQuery();
@@ -164,12 +220,29 @@ export default function TrendsPage() {
   };
 
   const handleRefreshTrends = () => {
-    // Clear cache and refetch fresh data
+    // Set refresh flag to true and invalidate cache
+    setForceRefresh(true);
+    
+    // Clear tRPC cache
     utils.trends.list.invalidate();
     
     // Also clear the service layer cache
     import('@/features/trends/services/trend-service').then(({ clearTrendsCache }) => {
       clearTrendsCache();
+    });
+    
+    // Reset refresh flag after a short delay
+    setTimeout(() => setForceRefresh(false), 1000);
+  };
+
+  const handleRegenerateTrends = () => {
+    regenerateTrendsMutation.mutate({
+      companyProfile,
+      filters: {
+        category: selectedCategory || undefined,
+        industry: companyProfile.industry,
+        priorities: companyProfile.priorities || [],
+      }
     });
   };
 
@@ -239,20 +312,20 @@ export default function TrendsPage() {
                     variant="outline"
                     onClick={handleExport}
                     disabled={exportMutation.isPending}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 text-sm"
                   >
                     <Download className="h-4 w-4" />
-                    {exportMutation.isPending ? 'Exporting...' : 'Export PDF'}
+                    {exportMutation.isPending ? 'Exporting...' : 'Export'}
                   </Button>
                 )}
                 
                 <Button
                   variant="outline"
                   onClick={() => setConversationMode(!conversationMode)}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 text-sm"
                 >
                   <MessageSquare className="h-4 w-4" />
-                  {conversationMode ? 'Exit Chat' : 'Start Conversation'}
+                  {conversationMode ? 'Exit' : 'Chat'}
                 </Button>
               </div>
             </div>
@@ -294,25 +367,29 @@ export default function TrendsPage() {
                         <div className="text-2xl font-bold text-blue-600">
                           {dashboardQuery.data.summary.totalInsights}
                         </div>
-                        <div className="text-sm text-gray-600">Active Insights</div>
+                        <div className="text-sm text-gray-600">Live Trends</div>
+                        <div className="text-xs text-gray-500">Actively monitored</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-green-600">
                           {Math.round(dashboardQuery.data.summary.averageConfidence * 100)}%
                         </div>
-                        <div className="text-sm text-gray-600">Avg Confidence</div>
+                        <div className="text-sm text-gray-600">AI Confidence</div>
+                        <div className="text-xs text-gray-500">Analysis accuracy</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-purple-600">
                           {Math.round(dashboardQuery.data.summary.cacheHitRate * 100)}%
                         </div>
-                        <div className="text-sm text-gray-600">Cache Hit Rate</div>
+                        <div className="text-sm text-gray-600">Data Freshness</div>
+                        <div className="text-xs text-gray-500">Real-time updates</div>
                       </div>
                       <div className="text-center">
                         <div className="text-2xl font-bold text-orange-600">
                           {dashboardQuery.data.systemHealth.agentsOnline}
                         </div>
-                        <div className="text-sm text-gray-600">Agents Online</div>
+                        <div className="text-sm text-gray-600">AI Agents</div>
+                        <div className="text-xs text-gray-500">Processing trends</div>
                       </div>
                     </div>
                   ) : (
@@ -326,14 +403,18 @@ export default function TrendsPage() {
                     <div className="flex items-center gap-2 mb-3">
                       <Zap className="h-4 w-4 text-yellow-500" />
                       <span className="text-sm font-medium">Live Market Intelligence Synthesis</span>
+                      <Badge variant="outline" className="text-xs">
+                        AI-Powered
+                      </Badge>
                     </div>
                     <div className="flex gap-2">
                       <Input
-                        placeholder="Ask the AI intelligence system anything about market trends..."
+                        id="market-synthesis-input"
+                        placeholder="Ask about AI trends, market shifts, competitive analysis..."
                         className="flex-1"
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter' && e.currentTarget.value) {
-                            handleMarketSynthesis(e.currentTarget.value);
+                          if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                            handleMarketSynthesis(e.currentTarget.value.trim());
                             e.currentTarget.value = '';
                           }
                         }}
@@ -341,18 +422,47 @@ export default function TrendsPage() {
                       <Button
                         disabled={synthesizeIntelligence.isPending}
                         onClick={() => {
-                          const input = document.querySelector('input') as HTMLInputElement;
-                          if (input?.value) {
-                            handleMarketSynthesis(input.value);
+                          const input = document.getElementById('market-synthesis-input') as HTMLInputElement;
+                          if (input?.value.trim()) {
+                            handleMarketSynthesis(input.value.trim());
                             input.value = '';
                           }
                         }}
+                        className="px-6"
                       >
                         {synthesizeIntelligence.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Analyzing...
+                          </>
                         ) : (
-                          'Analyze'
+                          <>
+                            <Zap className="h-4 w-4 mr-2" />
+                            Analyze
+                          </>
                         )}
+                      </Button>
+                    </div>
+                    
+                    {/* Quick action buttons */}
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleMarketSynthesis("What are the top 3 AI trends affecting enterprise businesses this quarter?")}
+                        disabled={synthesizeIntelligence.isPending}
+                        className="text-xs"
+                      >
+                        Trending AI Insights
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleMarketSynthesis("Analyze current competitive landscape in AI automation tools")}
+                        disabled={synthesizeIntelligence.isPending}
+                        className="text-xs"
+                      >
+                        Competitive Analysis
                       </Button>
                     </div>
 
@@ -392,13 +502,29 @@ export default function TrendsPage() {
             <div className="space-y-4">
               {/* Company Profile Setup */}
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertCircle className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium text-blue-900">
-                    AI Analysis Setup - Configure your company profile for personalized intelligence
-                  </span>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-900">
+                      AI Analysis Setup - Configure your company profile for personalized intelligence
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRegenerateTrends}
+                    disabled={regenerateTrendsMutation.isPending}
+                    className="flex items-center gap-2 text-xs"
+                  >
+                    {regenerateTrendsMutation.isPending ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3" />
+                    )}
+                    Regenerate Trends
+                  </Button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
                     <label className="text-xs font-medium text-gray-700">Industry</label>
                     <select
@@ -430,7 +556,7 @@ export default function TrendsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-gray-700">Tech Maturity</label>
+                    <label className="text-xs font-medium text-gray-700">Tech Focus</label>
                     <select
                       className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm"
                       value={companyProfile.techMaturity}
@@ -439,10 +565,19 @@ export default function TrendsPage() {
                         techMaturity: e.target.value as CompanyProfile['techMaturity']
                       }))}
                     >
-                      <option value="low">Low - Basic systems</option>
-                      <option value="medium">Medium - Modern stack</option>
-                      <option value="high">High - Cutting edge</option>
+                      <option value="low">Foundational</option>
+                      <option value="medium">Advanced</option>
+                      <option value="high">Innovation Leader</option>
                     </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-700">Company Domain (Optional)</label>
+                    <Input
+                      placeholder="e.g., fintech, healthtech"
+                      value={companyProfile.domain || ''}
+                      onChange={(e) => setCompanyProfile(prev => ({ ...prev, domain: e.target.value }))}
+                      className="mt-1 text-sm h-10"
+                    />
                   </div>
                 </div>
               </div>
@@ -455,13 +590,13 @@ export default function TrendsPage() {
                     onCategoryChange={setSelectedCategory}
                   />
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-1 max-w-md">
                   <Search className="h-4 w-4 text-gray-400" />
                   <Input
                     placeholder="Search trends..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-64"
+                    className="flex-1"
                   />
                 </div>
               </div>
@@ -534,29 +669,49 @@ export default function TrendsPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <AlertCircle className="h-4 w-4" />
-                  Live Market Signals
+                  <TrendingUp className="h-4 w-4" />
+                  Market Signals
+                  <Badge variant="outline" className="text-xs">
+                    {companyProfile.industry}
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {dashboardQuery.data ? (
                   <div className="space-y-3">
                     {dashboardQuery.data.marketSignals.map((signal: { signal: string; strength: string; confidence: number }, index: number) => (
-                      <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                      <div key={index} className="p-3 bg-gray-50 rounded-lg border-l-2 border-l-blue-500">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-sm font-medium">{signal.signal}</span>
-                          <Badge 
-                            variant={signal.strength === 'strong' ? 'default' : 'secondary'}
-                            className="text-xs"
-                          >
-                            {signal.strength}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant={signal.strength === 'strong' ? 'default' : 'secondary'}
+                              className="text-xs"
+                            >
+                              {signal.strength}
+                            </Badge>
+                            <span className="text-xs text-gray-500">
+                              {Math.round(signal.confidence * 100)}%
+                            </span>
+                          </div>
                         </div>
                         <div className="text-xs text-gray-600">
-                          {Math.round(signal.confidence * 100)}% confidence
+                          Relevant for {companyProfile.size} companies in {companyProfile.industry}
                         </div>
                       </div>
                     ))}
+                    
+                    {/* Action buttons for market signals */}
+                    <div className="pt-2 border-t border-gray-200">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleMarketSynthesis(`What market signals should ${companyProfile.industry} companies watch for?`)}
+                        className="w-full text-xs"
+                      >
+                        Get Industry-Specific Signals
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center py-4">
@@ -628,29 +783,29 @@ export default function TrendsPage() {
               <CardContent className="space-y-3">
                 <Button 
                   variant="outline" 
-                  className="w-full justify-start"
+                  className="w-full justify-start text-sm"
                   onClick={() => router.push('/needs')}
                 >
                   <Users className="h-4 w-4 mr-2" />
-                  Business Need Discovery
+                  Find Needs
                 </Button>
                 <Button 
                   variant="outline" 
-                  className="w-full justify-start"
+                  className="w-full justify-start text-sm"
                   onClick={() => router.push('/solutions')}
                 >
                   <TrendingUp className="h-4 w-4 mr-2" />
-                  Solution Marketplace
+                  Solutions
                 </Button>
                 {exportEnabled && allTrends && allTrends.length > 0 && (
                   <Button 
                     variant="outline" 
-                    className="w-full justify-start"
+                    className="w-full justify-start text-sm"
                     onClick={handleExport}
                     disabled={exportMutation.isPending}
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    {exportMutation.isPending ? 'Exporting...' : 'Export All Trends'}
+                    {exportMutation.isPending ? 'Exporting...' : 'Export All'}
                   </Button>
                 )}
               </CardContent>
