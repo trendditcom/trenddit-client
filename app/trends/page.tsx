@@ -132,7 +132,15 @@ export default function TrendsPage() {
   const dashboardQuery = trpc.intelligence.getIntelligenceDashboard.useQuery();
   const generateInsights = trpc.intelligence.generateConversationalInsights.useMutation({
     onSuccess: (data) => {
-      setConversationHistory(prev => [...prev, data.primaryInsight]);
+      if (data?.primaryInsight) {
+        setConversationHistory(prev => [...prev, `AI: ${data.primaryInsight}`]);
+      } else {
+        setConversationHistory(prev => [...prev, 'Error: AI response was empty. Please report this issue.']);
+      }
+    },
+    onError: (error) => {
+      console.error('Chat error:', error);
+      setConversationHistory(prev => [...prev, `Error: ${error.message || 'Chat service failed. Please report this issue.'}`]);
     },
   });
   const synthesizeIntelligence = trpc.intelligence.synthesizeMarketIntelligence.useMutation();
@@ -169,6 +177,9 @@ export default function TrendsPage() {
       if (trend) {
         setCurrentTopic(trend.title);
         setConversationMode(true);
+        
+        // Add initial user message to conversation
+        setConversationHistory([`You: Tell me about ${trend.title} and its relevance to my company`]);
         
         generateInsights.mutate({
           conversationContext: {
@@ -722,37 +733,99 @@ export default function TrendsPage() {
                     </div>
                     
                     <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {conversationHistory.map((message, index) => (
-                        <div key={index} className="p-2 bg-blue-50 rounded text-xs">
-                          {message}
+                      {conversationHistory.length === 0 && !generateInsights.isPending && (
+                        <div className="p-2 bg-gray-50 rounded text-xs text-gray-500 text-center">
+                          Click &ldquo;Chat&rdquo; on any trend card to start a conversation
                         </div>
-                      ))}
+                      )}
+                      
+                      {conversationHistory.map((message, index) => {
+                        const isUser = message.startsWith('You:');
+                        const isError = message.startsWith('Error:');
+                        return (
+                          <div 
+                            key={index} 
+                            className={`p-2 rounded text-xs ${
+                              isError 
+                                ? 'bg-red-50 text-red-700 border border-red-200' 
+                                : isUser 
+                                ? 'bg-blue-50 text-blue-900' 
+                                : 'bg-green-50 text-green-900'
+                            }`}
+                          >
+                            {message}
+                          </div>
+                        );
+                      })}
                       
                       {generateInsights.isPending && (
                         <div className="p-2 bg-gray-50 rounded text-xs flex items-center gap-2">
                           <Loader2 className="h-3 w-3 animate-spin" />
-                          AI is thinking...
+                          AI is analyzing the trend and generating insights...
                         </div>
                       )}
                     </div>
 
-                    {generateInsights.data && (
+                    {generateInsights.data && generateInsights.data.followUpQuestions && (
                       <div className="space-y-2">
-                        <div className="text-xs font-medium">Follow-up questions:</div>
+                        <div className="text-xs font-medium text-gray-700">Suggested follow-up questions:</div>
                         {generateInsights.data.followUpQuestions.slice(0, 2).map((question: string, index: number) => (
                           <Button
                             key={index}
                             variant="outline"
                             size="sm"
-                            className="w-full text-xs h-auto py-2 px-3 text-left"
+                            className="w-full text-xs h-auto py-2 px-3 text-left hover:bg-gray-50"
                             onClick={() => {
                               setConversationHistory(prev => [...prev, `You: ${question}`]);
+                              // Generate response to follow-up question
+                              generateInsights.mutate({
+                                conversationContext: {
+                                  previousMessages: conversationHistory,
+                                  currentTopic: currentTopic,
+                                  userQuestions: [question],
+                                },
+                                userRole: 'cto',
+                                companyContext: {
+                                  industry: companyProfile.industry,
+                                  size: companyProfile.size,
+                                  challenges: ['scalability', 'compliance', 'talent'],
+                                },
+                              });
                               // In real implementation, this would trigger another AI response
                             }}
                           >
                             {question}
                           </Button>
                         ))}
+                      </div>
+                    )}
+                    
+                    {generateInsights.error && (
+                      <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                        <div className="font-medium">Chat Service Error</div>
+                        <div className="mt-1 max-h-32 overflow-y-auto text-left whitespace-pre-wrap">
+                          {generateInsights.error.message}
+                        </div>
+                        <div className="mt-2 flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-xs h-6"
+                            onClick={() => {
+                              navigator.clipboard.writeText(generateInsights.error?.message || 'No error message');
+                            }}
+                          >
+                            Copy Error
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-xs h-6"
+                            onClick={() => generateInsights.reset()}
+                          >
+                            Clear Error
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>

@@ -210,7 +210,7 @@ Respond in JSON format:
           query
         );
 
-        // Generate real AI conversational insights
+        // Generate real AI conversational insights - no fallbacks
         const conversationalPrompt = `Generate conversational insights for a ${input.userRole} discussing "${input.conversationContext.currentTopic}" based on:
 
 Company Context:
@@ -248,29 +248,24 @@ Respond in JSON format:
               content: conversationalPrompt
             }
           ],
+          response_format: { type: 'json_object' },
           temperature: 0.4,
           max_tokens: 1000,
         });
 
-        // Parse AI response with fallback
-        let followUpQuestions = [];
-        let nextTopics = [];
-        let deepDiveAreas = [];
-
-        try {
-          const conversationalContent = conversationalAIResponse.choices[0].message.content || '{}';
-          const conversationalParsed = JSON.parse(conversationalContent);
-          followUpQuestions = conversationalParsed.followUpQuestions || [];
-          nextTopics = conversationalParsed.nextTopics || [];
-          deepDiveAreas = conversationalParsed.deepDiveAreas || [];
-        } catch (error) {
-          console.error('Failed to parse conversational AI response:', error);
-          // Role-specific fallbacks
-          const fallbacks = generateConversationalFallbacks(input.userRole);
-          followUpQuestions = fallbacks.followUpQuestions;
-          nextTopics = fallbacks.nextTopics;
-          deepDiveAreas = fallbacks.deepDiveAreas;
+        // Parse AI response
+        const conversationalContent = conversationalAIResponse.choices[0].message.content;
+        if (!conversationalContent) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'OpenAI returned empty response. Please report this issue with timestamp: ' + new Date().toISOString(),
+          });
         }
+
+        const conversationalParsed = JSON.parse(conversationalContent);
+        const followUpQuestions = conversationalParsed.followUpQuestions || [];
+        const nextTopics = conversationalParsed.nextTopics || [];
+        const deepDiveAreas = conversationalParsed.deepDiveAreas || [];
 
         const conversationalResponse = {
           primaryInsight: intelligence.primaryConclusion,
@@ -289,9 +284,27 @@ Respond in JSON format:
         return conversationalResponse;
       } catch (error) {
         console.error('Conversational insights generation failed:', error);
+        
+        // Create detailed error message for user to report
+        let errorMessage = 'Chat service failed. Please report this error:\n\n';
+        errorMessage += `Timestamp: ${new Date().toISOString()}\n`;
+        errorMessage += `Error: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
+        errorMessage += `Topic: ${input.conversationContext.currentTopic}\n`;
+        errorMessage += `User Role: ${input.userRole}\n`;
+        
+        if (error instanceof Error && error.message.includes('API key')) {
+          errorMessage += 'Issue: OpenAI API key configuration problem';
+        } else if (error instanceof Error && error.message.includes('rate limit')) {
+          errorMessage += 'Issue: API rate limit exceeded';
+        } else if (error instanceof Error && error.message.includes('network')) {
+          errorMessage += 'Issue: Network connectivity problem';
+        } else {
+          errorMessage += `Technical Details: ${error instanceof Error ? error.stack?.slice(0, 200) : 'No stack trace'}`;
+        }
+        
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to generate conversational insights',
+          message: errorMessage,
         });
       }
     }),
@@ -626,49 +639,3 @@ function calculateAlertLevel(activities: any[], threshold: string): 'low' | 'med
   return 'low';
 }
 
-function generateConversationalFallbacks(role: string): {
-  followUpQuestions: string[];
-  nextTopics: string[];
-  deepDiveAreas: string[];
-} {
-  const fallbacks = {
-    cto: {
-      followUpQuestions: [
-        "How does this align with your current technology architecture?",
-        "What are the technical implementation considerations?",
-        "How would this impact your development team's roadmap?",
-      ],
-      nextTopics: ["technical-architecture", "team-readiness", "infrastructure-requirements"],
-      deepDiveAreas: ["system-integration", "security-considerations", "scalability-planning"],
-    },
-    innovation_director: {
-      followUpQuestions: [
-        "How does this trend align with your innovation strategy?",
-        "What market opportunities does this create?",
-        "How might competitors respond to this development?",
-      ],
-      nextTopics: ["market-opportunity", "competitive-positioning", "innovation-pipeline"],
-      deepDiveAreas: ["market-analysis", "competitive-intelligence", "innovation-metrics"],
-    },
-    compliance_officer: {
-      followUpQuestions: [
-        "What are the regulatory implications of this trend?",
-        "How should we assess compliance risks?",
-        "What governance frameworks need updating?",
-      ],
-      nextTopics: ["regulatory-compliance", "risk-assessment", "governance-frameworks"],
-      deepDiveAreas: ["legal-requirements", "audit-preparation", "policy-development"],
-    },
-    engineering_manager: {
-      followUpQuestions: [
-        "How would this impact our current development processes?",
-        "What team training would be required?",
-        "How do we prioritize this against existing commitments?",
-      ],
-      nextTopics: ["team-development", "process-integration", "resource-planning"],
-      deepDiveAreas: ["skill-development", "workflow-optimization", "capacity-planning"],
-    },
-  };
-
-  return fallbacks[role as keyof typeof fallbacks] || fallbacks.cto;
-}
