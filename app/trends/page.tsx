@@ -12,8 +12,6 @@ import { trpc } from '@/lib/trpc/client';
 import { useFeatureFlag } from '@/lib/flags';
 import { 
   TrendingUp, 
-  AlertCircle, 
-  Loader2,
   Download,
   Grid3X3,
   List,
@@ -42,7 +40,7 @@ export default function TrendsPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Company profile state
-  const [companyProfile, setCompanyProfile] = useState<CompanyProfile>({
+  const [companyProfile] = useState<CompanyProfile>({
     industry: 'technology',
     size: 'medium', 
     techMaturity: 'high',
@@ -104,16 +102,6 @@ export default function TrendsPage() {
   }, [allTrends]);
 
   const exportMutation = trpc.trends.export.useMutation();
-  const regenerateTrendsMutation = trpc.trends.regenerateForProfile.useMutation({
-    onSuccess: () => {
-      utils.trends.list.invalidate();
-    },
-    onError: (error) => {
-      console.error('Regenerate trends failed:', error);
-      // Fallback to regular refresh
-      handleRefreshTrends();
-    },
-  });
 
 
   const utils = trpc.useUtils();
@@ -169,16 +157,6 @@ export default function TrendsPage() {
     setTimeout(() => setForceRefresh(false), 1000);
   };
 
-  const handleRegenerateTrends = () => {
-    regenerateTrendsMutation.mutate({
-      companyProfile,
-      filters: {
-        category: selectedCategory || undefined,
-        industry: companyProfile.industry,
-        priorities: companyProfile.priorities || [],
-      }
-    });
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -193,10 +171,10 @@ export default function TrendsPage() {
                 <div className="h-8 w-px bg-gray-300"></div>
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900">
-                    AI Trend Intelligence
+                    Trend Intelligence
                   </h2>
                   <p className="text-gray-600 mt-1">
-                    Track and analyze AI trends for your enterprise
+                    Track and analyze trends for your enterprise
                   </p>
                 </div>
               </div>
@@ -259,87 +237,6 @@ export default function TrendsPage() {
             
             {/* Company Profile & Filters */}
             <div className="space-y-4">
-              {/* Company Profile Setup */}
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-900">
-                      AI Analysis Setup - Configure your company profile for personalized intelligence
-                    </span>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRegenerateTrends}
-                    disabled={regenerateTrendsMutation.isPending}
-                    className="flex items-center gap-2 text-xs"
-                  >
-                    {regenerateTrendsMutation.isPending ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-3 w-3" />
-                    )}
-                    Regenerate Trends
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">Industry</label>
-                    <select
-                      className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm"
-                      value={companyProfile.industry}
-                      onChange={(e) => setCompanyProfile(prev => ({ ...prev, industry: e.target.value }))}
-                    >
-                      <option value="technology">Technology</option>
-                      <option value="healthcare">Healthcare</option>
-                      <option value="finance">Finance</option>
-                      <option value="retail">Retail</option>
-                      <option value="manufacturing">Manufacturing</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">Company Size</label>
-                    <select
-                      className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm"
-                      value={companyProfile.size}
-                      onChange={(e) => setCompanyProfile(prev => ({ 
-                        ...prev, 
-                        size: e.target.value as CompanyProfile['size']
-                      }))}
-                    >
-                      <option value="startup">Startup (1-50)</option>
-                      <option value="small">Small (51-200)</option>
-                      <option value="medium">Medium (201-1000)</option>
-                      <option value="enterprise">Enterprise (1000+)</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">Tech Focus</label>
-                    <select
-                      className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm"
-                      value={companyProfile.techMaturity}
-                      onChange={(e) => setCompanyProfile(prev => ({ 
-                        ...prev, 
-                        techMaturity: e.target.value as CompanyProfile['techMaturity']
-                      }))}
-                    >
-                      <option value="low">Foundational</option>
-                      <option value="medium">Advanced</option>
-                      <option value="high">Innovation Leader</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-700">Company Domain (Optional)</label>
-                    <Input
-                      placeholder="e.g., company.com, startup.io"
-                      value={companyProfile.domain || ''}
-                      onChange={(e) => setCompanyProfile(prev => ({ ...prev, domain: e.target.value }))}
-                      className="mt-1 text-sm h-10"
-                    />
-                  </div>
-                </div>
-              </div>
 
               {/* Filters and Search */}
               <div className="flex items-center gap-4 flex-wrap">
@@ -383,7 +280,7 @@ export default function TrendsPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
-                  AI-Enhanced Trend Intelligence ({filteredTrends.length})
+                  Trend Intelligence ({filteredTrends.length})
                 </h2>
                 <div className="text-sm text-gray-700 font-medium">
                   View: {viewMode === 'cards' ? 'Card Grid' : 'Detailed Rows'}

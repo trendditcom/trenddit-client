@@ -22,16 +22,6 @@ const marketAgent = new MarketIntelligenceAgent();
 agentRegistry.register(marketAgent);
 
 // Input schemas for API procedures
-const TrendRelevancePredictionSchema = z.object({
-  companyProfile: z.object({
-    industry: z.string(),
-    size: z.enum(['startup', 'small', 'medium', 'enterprise']),
-    techMaturity: z.enum(['low', 'medium', 'high']),
-  }),
-  timeHorizon: z.enum(['3months', '6months', '1year', '2years']).default('6months'),
-  confidenceThreshold: z.number().min(0).max(1).default(0.7),
-});
-
 const ConversationalInsightsSchema = z.object({
   conversationContext: z.object({
     previousMessages: z.array(z.string()),
@@ -65,118 +55,8 @@ const MarketSynthesisSchema = z.object({
  */
 export const marketIntelligenceRouter = router({
   
-  /**
-   * Predict which trends are most relevant for a specific company
-   * Uses multi-agent analysis with chain-of-thought reasoning
-   */
-  predictTrendRelevance: protectedProcedure
-    .input(TrendRelevancePredictionSchema)
-    .mutation(async ({ input }) => {
-      try {
-        const context = ContextSchema.parse({
-          company: input.companyProfile,
-          timeHorizon: input.timeHorizon,
-          confidenceThreshold: input.confidenceThreshold,
-        });
-
-        const cacheKey = `trend-relevance-${JSON.stringify(input)}`;
-        const cached = await intelligenceCache.get(cacheKey);
-        
-        if (cached) {
-          return cached;
-        }
-
-        // Use market intelligence agent for analysis
-        const analysis = await marketAgent.analyze(context);
-        
-        // Generate specific trend relevance using real AI analysis
-        const trendRelevancePrompt = `Based on this company profile analysis, predict the relevance of current AI trends:
-
-Company: ${input.companyProfile.industry} industry, ${input.companyProfile.size} size, ${input.companyProfile.techMaturity} tech maturity
-Time Horizon: ${input.timeHorizon}
-
-ANALYSIS REQUIREMENTS:
-Generate 3-5 relevant AI trends with specific relevance scores and reasoning.
-
-Respond in JSON format:
-{
-  "relevantTrends": [
-    {
-      "trendId": "specific-trend-id",
-      "relevanceScore": 0.85,
-      "reasoning": "specific reasoning for this company",
-      "timelineImpact": "Critical within X months / Opportunity within X months / Plan for X months"
-    }
-  ]
-}`;
-
-        const relevanceResponse = await openai.chat.completions.create({
-          model: 'gpt-4o',
-          messages: [
-            {
-              role: 'system',
-              content: `You are a senior market intelligence analyst specializing in AI trends for enterprises. 
-              Generate specific, actionable trend relevance predictions based on company context.`
-            },
-            {
-              role: 'user',
-              content: trendRelevancePrompt
-            }
-          ],
-          temperature: 0.3,
-          max_tokens: 1500,
-        });
-
-        let relevantTrends = [];
-        try {
-          const aiResponse = relevanceResponse.choices[0].message.content || '{}';
-          const parsed = JSON.parse(aiResponse);
-          relevantTrends = parsed.relevantTrends || [];
-        } catch (error) {
-          console.error('Failed to parse trend relevance response:', error);
-          // Fallback based on analysis results
-          relevantTrends = [
-            {
-              trendId: 'ai-enterprise-adoption',
-              relevanceScore: analysis.confidence,
-              reasoning: analysis.conclusion,
-              timelineImpact: `Relevant for ${input.companyProfile.industry} companies`,
-            }
-          ];
-        }
-
-        const result = {
-          relevantTrends,
-          overallConfidence: analysis.confidence,
-          reasoningChain: analysis.reasoning,
-          lastUpdated: new Date(),
-        };
-
-        // Cache the result
-        await intelligenceCache.cacheWithConfidence(cacheKey, {
-          id: cacheKey,
-          type: 'trend',
-          title: 'Trend Relevance Prediction',
-          summary: 'AI-generated trend relevance analysis',
-          sentiment: 'neutral',
-          confidence: analysis.confidence,
-          sources: analysis.dataSourcesused,
-          entities: [input.companyProfile.industry],
-          tags: ['trend-prediction', 'relevance-analysis'],
-          impact_score: 8,
-          processed_at: new Date(),
-          expires_at: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours
-        });
-
-        return result;
-      } catch (error) {
-        console.error('Trend relevance prediction failed:', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to predict trend relevance',
-        });
-      }
-    }),
+  // AI Analysis feature removed - predictTrendRelevance mutation disabled
+  // This mutation was used for the AI Scan/Analysis button that has been removed from the UI
 
   /**
    * Generate conversational insights that adapt to user role and context

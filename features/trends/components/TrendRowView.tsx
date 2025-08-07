@@ -4,17 +4,12 @@ import { useState } from 'react';
 import { Trend } from '../types/trend';
 import { Button } from '@/lib/ui/button';
 import { Badge } from '@/lib/ui/badge';
-import { trpc } from '@/lib/trpc/client';
 import { 
   TrendingUp, 
- 
   ExternalLink, 
   Calendar,
   Target,
-  Loader2,
-  ChevronRight,
-  AlertTriangle,
-  CheckCircle
+  ChevronRight
 } from 'lucide-react';
 
 interface CompanyProfile {
@@ -35,30 +30,6 @@ export function TrendRowView({
   onGenerateNeeds,
 }: TrendRowViewProps) {
   const [expandedTrend, setExpandedTrend] = useState<string | null>(null);
-  const [intelligenceData, setIntelligenceData] = useState<Record<string, any>>({});
-  const [currentAnalysisTrendId, setCurrentAnalysisTrendId] = useState<string | null>(null);
-
-  const predictRelevance = trpc.intelligence.predictTrendRelevance.useMutation({
-    onSuccess: (data) => {
-      if (currentAnalysisTrendId) {
-        setIntelligenceData(prev => ({ ...prev, [currentAnalysisTrendId]: data }));
-      }
-    },
-    onError: (error) => {
-      console.error('Relevance prediction failed:', error);
-    },
-  });
-
-  const handleIntelligentAnalysis = async (trendId: string) => {
-    if (!companyProfile) return;
-    
-    setCurrentAnalysisTrendId(trendId);
-    predictRelevance.mutate({
-      companyProfile,
-      timeHorizon: '6months',
-      confidenceThreshold: 0.7,
-    });
-  };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
@@ -76,17 +47,6 @@ export function TrendRowView({
     return 'text-green-600';
   };
 
-  const getRelevanceColor = (score: number) => {
-    if (score >= 0.8) return 'bg-green-100 text-green-800 border-green-200';
-    if (score >= 0.6) return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    return 'bg-gray-100 text-gray-800 border-gray-200';
-  };
-
-  const getUrgencyIcon = (timeline: string) => {
-    if (timeline.includes('Critical')) return <AlertTriangle className="h-4 w-4 text-red-500" />;
-    if (timeline.includes('Opportunity')) return <TrendingUp className="h-4 w-4 text-blue-500" />;
-    return <CheckCircle className="h-4 w-4 text-green-500" />;
-  };
 
   if (trends.length === 0) {
     return (
@@ -101,7 +61,6 @@ export function TrendRowView({
     <div className="space-y-2">
       {trends.map((trend) => {
         const isExpanded = expandedTrend === trend.id;
-        const intelligence = intelligenceData[trend.id];
 
         return (
           <div 
@@ -135,37 +94,9 @@ export function TrendRowView({
                   </p>
                 </div>
 
-                {/* AI Intelligence Indicators - Col 7-8 */}
+                {/* Spacer - Col 7-8 */}
                 <div className="col-span-2">
-                  {intelligence && intelligence.relevantTrends?.length > 0 && (
-                    <div className="space-y-1">
-                      {intelligence.relevantTrends.slice(0, 2).map((relevantTrend: any, index: number) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <Badge 
-                            className={`text-xs ${getRelevanceColor(relevantTrend.relevanceScore)}`}
-                          >
-                            {Math.round(relevantTrend.relevanceScore * 100)}%
-                          </Badge>
-                          {getUrgencyIcon(relevantTrend.timelineImpact)}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {!intelligence && companyProfile && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleIntelligentAnalysis(trend.id)}
-                      disabled={predictRelevance.isPending}
-                      className="text-xs py-1 px-2 h-auto"
-                    >
-                      {predictRelevance.isPending && currentAnalysisTrendId === trend.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        'AI Analysis'
-                      )}
-                    </Button>
-                  )}
+                  {/* Empty spacer for layout */}
                 </div>
 
                 {/* Metadata - Col 9-10 */}
@@ -208,69 +139,6 @@ export function TrendRowView({
                     </p>
                   </div>
 
-                  {/* AI Intelligence Section */}
-                  {intelligence && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse inline-block"></span>
-                        <span className="text-sm font-medium text-blue-900">
-                          AI Intelligence Analysis
-                        </span>
-                        <Badge variant="outline" className="text-xs">
-                          {Math.round(intelligence.overallConfidence * 100)}% confidence
-                        </Badge>
-                      </div>
-
-                      {intelligence.relevantTrends?.map((relevantTrend: any, index: number) => (
-                        <div key={index} className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-gray-900">
-                              {relevantTrend.timelineImpact}
-                            </span>
-                            <span className="text-xs text-gray-700">
-                              {Math.round(relevantTrend.relevanceScore * 100)}% match
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-800">
-                            {relevantTrend.reasoning}
-                          </p>
-                        </div>
-                      ))}
-
-                      {/* Chain of Thought Reasoning */}
-                      {intelligence.reasoningChain && intelligence.reasoningChain.length > 0 && (
-                        <details className="text-sm">
-                          <summary className="cursor-pointer text-blue-700 hover:text-blue-800 font-medium">
-                            View AI Reasoning Chain
-                          </summary>
-                          <div className="mt-2 space-y-2 pl-4 border-l-2 border-blue-200">
-                            {intelligence.reasoningChain.map((step: any, index: number) => (
-                              <div key={index} className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                    Step {step.step}
-                                  </span>
-                                  <span className="text-xs text-gray-700">
-                                    {Math.round(step.confidence * 100)}% confidence
-                                  </span>
-                                </div>
-                                <p className="text-xs text-gray-800">{step.description}</p>
-                                {step.evidence.length > 0 && (
-                                  <ul className="text-xs text-gray-700 pl-4">
-                                    {step.evidence.map((evidence: string, evidenceIndex: number) => (
-                                      <li key={evidenceIndex} className="list-disc">
-                                        {evidence}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        </details>
-                      )}
-                    </div>
-                  )}
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-3">
