@@ -16,8 +16,7 @@ import {
   Download,
   Grid3X3,
   List,
-  Search,
-  RefreshCw
+  Search
 } from 'lucide-react';
 import { ErrorDisplay } from '@/lib/ui/error-display';
 import { TrendCardSkeleton, ProgressLoader } from '@/lib/ui/skeleton';
@@ -62,9 +61,6 @@ export default function TrendsPage() {
   // Feature flags
   const exportEnabled = useFeatureFlag('trends.export');
 
-  // State for refresh control
-  const [forceRefresh, setForceRefresh] = useState(false);
-
   // Try to get initial data from localStorage
   const getInitialTrends = () => {
     try {
@@ -87,7 +83,6 @@ export default function TrendsPage() {
   // API queries and mutations - always fetch mixed dataset for client-side filtering
   const { data: allTrends, isLoading, error } = trpc.trends.list.useQuery({
     limit: 20, // Always get mixed dataset of 20 trends
-    refresh: forceRefresh, // Force refresh when needed
   }, {
     staleTime: 60 * 60 * 1000, // 1 hour - trends stay fresh for longer
     gcTime: 24 * 60 * 60 * 1000, // 24 hours - keep in cache much longer
@@ -126,6 +121,7 @@ export default function TrendsPage() {
   });
 
   const utils = trpc.useUtils();
+
 
   // Client-side filtering - apply category and search filters to master dataset
   const filteredTrends = React.useMemo(() => {
@@ -183,21 +179,6 @@ export default function TrendsPage() {
     );
   };
 
-  const handleRefreshTrends = () => {
-    // Set refresh flag to true and invalidate cache
-    setForceRefresh(true);
-    
-    // Clear tRPC cache
-    utils.trends.list.invalidate();
-    
-    // Also clear the service layer cache
-    import('@/features/trends/services/trend-service').then(({ clearTrendsCache }) => {
-      clearTrendsCache();
-    });
-    
-    // Reset refresh flag after a short delay
-    setTimeout(() => setForceRefresh(false), 1000);
-  };
 
 
   return (
@@ -245,16 +226,6 @@ export default function TrendsPage() {
                   </Button>
                 </div>
 
-                <Button
-                  variant="outline"
-                  onClick={handleRefreshTrends}
-                  disabled={isHydrated ? isLoading : false}
-                  className="flex items-center gap-2"
-                  title="Refresh trends - get latest market intelligence"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isHydrated && isLoading ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
 
                 {exportEnabled && isHydrated && allTrends && allTrends.length > 0 && (
                   <Button

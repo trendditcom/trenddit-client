@@ -1,1 +1,1 @@
-Review project code and .claude/specs/ folder to update README.md as a professionally designed top GitHub repo styled README for Trenddit Client
+Review project code and .claude/specs/ folder to update README.md as a professionally designed top GitHub repo styled README for Trenddit Client. Make sure the README.md does not have any content from past features no longer part of released code.
