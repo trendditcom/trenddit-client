@@ -141,9 +141,12 @@ Return as JSON array with this structure:
       throw new Error('Invalid response format from AI');
     }
 
+    // Create a consistent seed for trend IDs based on content
+    const contentSeed = Date.now(); // Use consistent timestamp for this batch
+    
     // Transform AI response to Trend objects with current dates
     const trends: Trend[] = trendsData.slice(0, limit).map((trend, index) => ({
-      id: `trend_${Date.now()}_${index}`,
+      id: `trend_${contentSeed}_${index}`,
       title: trend.title || `AI Trend ${index + 1}`,
       summary: trend.summary || 'Emerging AI trend with significant market impact.',
       category: validateCategory(trend.category),
@@ -190,18 +193,13 @@ function validateCategory(category: string): TrendCategory {
  * Get a single trend by ID - generates it fresh if not found
  */
 export async function getDynamicTrendById(trendId: string): Promise<Trend | null> {
-  try {
-    // For now, generate a single specific trend
-    // In production, this would check a cache or database first
-    const trends = await generateDynamicTrends(undefined, 1);
-    if (trends.length > 0) {
-      return { ...trends[0], id: trendId };
-    }
-    throw new Error('No trend generated');
-  } catch (error) {
-    console.error('Error getting trend by ID:', error);
-    throw error; // Propagate error instead of returning null
-  }
+  // This function should not generate new trends - it should only be used as a fallback
+  // The real trend should be found in the cache by the service layer
+  console.warn(`getDynamicTrendById called for ${trendId} - this should not happen if caching works properly`);
+  
+  // Return null instead of generating a new trend
+  // This will cause the tRPC endpoint to return NOT_FOUND, which is correct behavior
+  return null;
 }
 
 /**

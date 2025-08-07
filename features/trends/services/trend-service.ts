@@ -76,7 +76,7 @@ export async function getTrends(category?: TrendCategory, limit: number = 20): P
 export async function getTrendById(trendId: string): Promise<Trend | null> {
   try {
     // First check memory cache
-    if (masterTrendsCache) {
+    if (masterTrendsCache && masterTrendsCache.trends) {
       const trend = masterTrendsCache.trends.find(t => t.id === trendId);
       if (trend) {
         return trend;
@@ -85,7 +85,7 @@ export async function getTrendById(trendId: string): Promise<Trend | null> {
     
     // Check localStorage cache
     const cachedData = getFromLocalStorage();
-    if (cachedData) {
+    if (cachedData && cachedData.trends) {
       const trend = cachedData.trends.find(t => t.id === trendId);
       if (trend) {
         // Update memory cache with found data
@@ -94,20 +94,18 @@ export async function getTrendById(trendId: string): Promise<Trend | null> {
       }
     }
     
-    // If not in cache, generate/fetch it (server-side only)
-    const isServer = typeof window === 'undefined';
-    if (isServer) {
-      const { getDynamicTrendById } = await import('../server/trend-generator');
-      const trend = await getDynamicTrendById(trendId);
-      return trend;
-    } else {
-      // On client-side, if trend not found in cache, throw error
-      // This should not happen if trends are properly loaded
-      throw new Error(`Trend with ID '${trendId}' not found in cache. Ensure trends are loaded first.`);
-    }
+    // If not found in cache, the trend doesn't exist
+    // This can happen if:
+    // 1. User navigated directly to needs page without loading trends first
+    // 2. Trends cache was cleared 
+    // 3. Invalid trend ID
+    
+    // Return null if not found - this will result in a NOT_FOUND error
+    // which is the correct behavior when a trend doesn't exist
+    return null;
   } catch (error) {
     console.error('Error fetching trend by ID:', error);
-    throw error; // Propagate error for proper handling
+    throw error;
   }
 }
 

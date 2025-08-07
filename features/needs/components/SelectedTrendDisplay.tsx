@@ -18,7 +18,13 @@ interface SelectedTrendDisplayProps {
 export function SelectedTrendDisplay({ trendId }: SelectedTrendDisplayProps) {
   const { data: trend, isLoading, error } = trpc.trends.getById.useQuery(
     { trendId },
-    { enabled: !!trendId }
+    { 
+      enabled: !!trendId,
+      // Retry only once if not found
+      retry: 1,
+      // Use cache from trends list if available
+      staleTime: 30 * 60 * 1000, // 30 minutes
+    }
   );
 
   // Helper functions from TrendRowView for consistent styling
@@ -65,11 +71,25 @@ export function SelectedTrendDisplay({ trendId }: SelectedTrendDisplayProps) {
     return (
       <Card className="mb-6 border-orange-200 bg-orange-50">
         <CardContent className="p-4">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-orange-600" />
-            <span className="text-sm text-orange-800">
-              {error ? 'Error loading trend' : 'Trend not found'}
-            </span>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-orange-600" />
+              <span className="text-sm font-medium text-orange-800">
+                Selected Trend Not Available
+              </span>
+            </div>
+            <div className="text-xs text-orange-700">
+              The trend you selected may no longer be available. This can happen if trends were regenerated or your session expired.
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <a 
+                href="/trends" 
+                className="text-xs text-orange-800 hover:text-orange-900 underline font-medium"
+              >
+                ← Back to Trends
+              </a>
+              <span className="text-xs text-orange-600">or continue with the discovery wizard below</span>
+            </div>
           </div>
         </CardContent>
       </Card>
