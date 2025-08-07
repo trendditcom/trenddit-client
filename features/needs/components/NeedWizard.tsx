@@ -9,6 +9,7 @@ import { GoalsStep } from './GoalsStep';
 import { ReviewStep } from './ReviewStep';
 import { NeedsGenerationStep } from './NeedsGenerationStep';
 import { PrioritizationStep } from './PrioritizationStep';
+import { SelectedTrendDisplay } from './SelectedTrendDisplay';
 import { cva } from 'class-variance-authority';
 import { clsx } from 'clsx';
 
@@ -176,9 +177,7 @@ export function NeedWizard({ selectedTrendId, onComplete, onCancel }: NeedWizard
         </div>
         
         {selectedTrendId && (
-          <p className="text-sm text-gray-600 mb-4">
-            Generating needs based on selected AI trend
-          </p>
+          <SelectedTrendDisplay trendId={selectedTrendId} />
         )}
 
         {/* Progress Bar */}

@@ -6,6 +6,7 @@ export { GoalsStep } from './components/GoalsStep';
 export { ReviewStep } from './components/ReviewStep';
 export { NeedsGenerationStep } from './components/NeedsGenerationStep';
 export { PrioritizationStep } from './components/PrioritizationStep';
+export { SelectedTrendDisplay } from './components/SelectedTrendDisplay';
 
 export { useNeedsStore, useNeedsSelectors } from './stores/needsStore';
 
