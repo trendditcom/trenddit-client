@@ -47,6 +47,16 @@ export function TrendRowView({
     return 'text-green-600 bg-green-50';
   };
 
+  const getLeftBorderColor = (category: string) => {
+    switch (category) {
+      case 'consumer': return 'border-l-blue-500';
+      case 'competition': return 'border-l-purple-500';
+      case 'economy': return 'border-l-green-500';
+      case 'regulation': return 'border-l-orange-500';
+      default: return 'border-l-gray-500';
+    }
+  };
+
   if (trends.length === 0) {
     return (
       <div className="text-center py-12">
@@ -64,7 +74,7 @@ export function TrendRowView({
         return (
           <div 
             key={trend.id} 
-            className="bg-white border border-gray-200 rounded-lg hover:shadow-lg transition-all duration-200"
+            className={`bg-white border border-gray-200 rounded-lg hover:shadow-lg transition-all duration-200 border-l-4 ${getLeftBorderColor(trend.category)}`}
           >
             {/* Main Row Content */}
             <div className="p-5">
