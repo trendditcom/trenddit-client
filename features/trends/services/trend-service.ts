@@ -75,23 +75,39 @@ export async function getTrends(category?: TrendCategory, limit: number = 20): P
  */
 export async function getTrendById(trendId: string): Promise<Trend | null> {
   try {
+    console.log(`🔍 getTrendById called with ID: ${trendId}`);
+    
     // First check memory cache
     if (masterTrendsCache && masterTrendsCache.trends) {
+      console.log(`📝 Memory cache has ${masterTrendsCache.trends.length} trends`);
+      const availableIds = masterTrendsCache.trends.map(t => t.id);
+      console.log(`📝 Available trend IDs in memory: ${availableIds.slice(0, 3).join(', ')}...`);
+      
       const trend = masterTrendsCache.trends.find(t => t.id === trendId);
       if (trend) {
+        console.log(`✅ Found trend in memory cache: ${trend.title}`);
         return trend;
       }
+    } else {
+      console.log(`📝 No memory cache available`);
     }
     
     // Check localStorage cache
     const cachedData = getFromLocalStorage();
     if (cachedData && cachedData.trends) {
+      console.log(`💾 localStorage cache has ${cachedData.trends.length} trends`);
+      const availableIds = cachedData.trends.map(t => t.id);
+      console.log(`💾 Available trend IDs in localStorage: ${availableIds.slice(0, 3).join(', ')}...`);
+      
       const trend = cachedData.trends.find(t => t.id === trendId);
       if (trend) {
+        console.log(`✅ Found trend in localStorage cache: ${trend.title}`);
         // Update memory cache with found data
         masterTrendsCache = cachedData;
         return trend;
       }
+    } else {
+      console.log(`💾 No localStorage cache available`);
     }
     
     // If not found in cache, the trend doesn't exist
@@ -102,6 +118,7 @@ export async function getTrendById(trendId: string): Promise<Trend | null> {
     
     // Return null if not found - this will result in a NOT_FOUND error
     // which is the correct behavior when a trend doesn't exist
+    console.log(`❌ Trend ${trendId} not found in any cache`);
     return null;
   } catch (error) {
     console.error('Error fetching trend by ID:', error);
@@ -206,10 +223,18 @@ function saveToLocalStorage(data: { trends: Trend[], timestamp: number }): void 
 function getFromLocalStorage(): { trends: Trend[], timestamp: number } | null {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
+      console.log(`🔧 Checking localStorage for key: ${STORAGE_KEY}`);
       const data = localStorage.getItem(STORAGE_KEY);
       if (data) {
-        return JSON.parse(data);
+        console.log(`🔧 Found localStorage data: ${data.substring(0, 100)}...`);
+        const parsed = JSON.parse(data);
+        console.log(`🔧 Parsed localStorage data: ${parsed.trends?.length || 0} trends`);
+        return parsed;
+      } else {
+        console.log(`🔧 No data found in localStorage for key: ${STORAGE_KEY}`);
       }
+    } else {
+      console.log(`🔧 localStorage not available (server-side or not supported)`);
     }
   } catch (error) {
     console.warn('Failed to read trends from localStorage:', error);
