@@ -106,7 +106,17 @@ export default function TrendsPage() {
   }, [allTrends]);
 
   const exportMutation = trpc.trends.export.useMutation();
-
+  const regenerateTrendsMutation = trpc.trends.regenerateForProfile.useMutation({
+    onSuccess: () => {
+      // Force a hard refresh by clearing React Query cache and refetching
+      utils.trends.list.invalidate();
+      // Also force refetch immediately
+      utils.trends.list.refetch();
+    },
+    onError: (error) => {
+      console.error('Failed to regenerate personalized trends:', error);
+    },
+  });
 
   const utils = trpc.useUtils();
 
@@ -142,27 +152,28 @@ export default function TrendsPage() {
 
 
   const handleGenerateNeeds = (trendId: string) => {
+    // The personalization profile will be automatically loaded from localStorage
+    // by the CompanyProfileStep component, so we just need to pass the trendId
     router.push(`/needs?trendId=${trendId}`);
   };
 
-  const handleGeneratePersonalizedTrends = async (profile: PersonalizationProfile) => {
+  const handleGeneratePersonalizedTrends = (profile: PersonalizationProfile) => {
     setIsGeneratingPersonalized(true);
-    try {
-      // For now, we'll just refresh the existing trends
-      // In a real implementation, this would call a personalized trends API
-      console.log('Generating personalized trends for profile:', profile);
-      
-      // Clear cache and refetch with personalization context
-      utils.trends.list.invalidate();
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-    } catch (error) {
-      console.error('Failed to generate personalized trends:', error);
-    } finally {
-      setIsGeneratingPersonalized(false);
-    }
+    
+    regenerateTrendsMutation.mutate(
+      { personalizationProfile: profile },
+      {
+        onSuccess: () => {
+          // Set a small delay to allow the UI to update with fresh data
+          setTimeout(() => {
+            setIsGeneratingPersonalized(false);
+          }, 500);
+        },
+        onError: () => {
+          setIsGeneratingPersonalized(false);
+        },
+      }
+    );
   };
 
   const handleRefreshTrends = () => {

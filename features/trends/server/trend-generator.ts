@@ -9,8 +9,12 @@ import { Trend, TrendCategory } from '../types/trend';
 
 interface CompanyProfile {
   industry: string;
-  size: 'startup' | 'small' | 'medium' | 'enterprise';
-  techMaturity: 'low' | 'medium' | 'high';
+  market?: string;
+  customer?: string;
+  businessSize?: string;
+  // Legacy fields for backward compatibility
+  size?: 'startup' | 'small' | 'medium' | 'enterprise';
+  techMaturity?: 'low' | 'medium' | 'high';
   domain?: string;
   priorities?: string[];
 }
@@ -45,15 +49,19 @@ ENSURE BALANCED DISTRIBUTION: The response must contain ${trendsPerCategory} tre
   // Build personalization context
   const personalizationContext = companyProfile ? `
 PERSONALIZATION CONTEXT:
-- Target company: ${companyProfile.industry} industry, ${companyProfile.size} size, ${companyProfile.techMaturity} tech maturity
+- Target industry: ${companyProfile.industry}
+${companyProfile.market ? `- Primary market: ${companyProfile.market}` : ''}
+${companyProfile.customer ? `- Customer type: ${companyProfile.customer}` : ''}
+${companyProfile.businessSize ? `- Business size: ${companyProfile.businessSize}` : ''}
 ${companyProfile.domain ? `- Company domain: ${companyProfile.domain}` : ''}
 ${companyProfile.priorities ? `- Key priorities: ${companyProfile.priorities.join(', ')}` : ''}
 
 PERSONALIZATION REQUIREMENTS:
-- Prioritize trends most relevant to ${companyProfile.industry} companies
-- Consider the scale and resources of ${companyProfile.size} companies
-- Match trends to ${companyProfile.techMaturity} technology adoption patterns
-- Include specific implications for this company profile in summaries
+- Prioritize trends most relevant to ${companyProfile.industry} industry
+${companyProfile.market ? `- Focus on trends impacting the ${companyProfile.market} market` : ''}
+${companyProfile.customer ? `- Emphasize trends affecting ${companyProfile.customer} customers` : ''}
+${companyProfile.businessSize ? `- Consider the scale and resources of ${companyProfile.businessSize} businesses` : ''}
+- Include specific implications for this business profile in summaries
 ` : '';
 
   const prompt = `You are a leading AI and technology market analyst with real-time knowledge of current events. Generate ${limit} current, relevant AI/technology trends for ${currentMonth} with BALANCED CATEGORY DISTRIBUTION.

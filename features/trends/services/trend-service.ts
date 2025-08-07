@@ -133,6 +133,25 @@ export function clearTrendsCache(): void {
 }
 
 /**
+ * Update trends cache with new trends (useful after personalized generation)
+ */
+export function updateTrendsCache(trends: Trend[]): void {
+  const cacheData = { trends, timestamp: Date.now() };
+  
+  // Update memory cache
+  masterTrendsCache = cacheData;
+  
+  // Update localStorage cache
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cacheData));
+    }
+  } catch (error) {
+    console.warn('Failed to update trends in localStorage:', error);
+  }
+}
+
+/**
  * Get cached trends without API call (for immediate display)
  */
 export function getCachedTrends(category?: TrendCategory): Trend[] | null {

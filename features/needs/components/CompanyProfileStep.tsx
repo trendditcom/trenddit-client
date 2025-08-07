@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useNeedsStore } from '../stores/needsStore';
 import { CompanyContext } from '../types/need';
+import { getPreFilledCompanyContext } from '@/lib/utils/personalization-sync';
 import { cva } from 'class-variance-authority';
 import { clsx } from 'clsx';
 
@@ -49,7 +50,20 @@ interface FormErrors {
 
 export function CompanyProfileStep({ onNext }: CompanyProfileStepProps) {
   const { wizard, updateCompanyContext, completeStep, setError } = useNeedsStore();
-  const [formData, setFormData] = useState<Partial<CompanyContext>>(wizard.companyContext);
+  
+  // Initialize form data with existing wizard data or personalization data from trends
+  const getInitialFormData = (): Partial<CompanyContext> => {
+    // If wizard already has data, use that (user has been through this step before)
+    if (wizard.companyContext && Object.keys(wizard.companyContext).length > 0) {
+      return wizard.companyContext;
+    }
+    
+    // Otherwise, try to pre-fill from trends personalization
+    const preFilledData = getPreFilledCompanyContext();
+    return preFilledData;
+  };
+  
+  const [formData, setFormData] = useState<Partial<CompanyContext>>(getInitialFormData());
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 

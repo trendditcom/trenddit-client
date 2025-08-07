@@ -99,38 +99,37 @@ export const trendsRouter = router({
   regenerateForProfile: publicProcedure
     .input(
       z.object({
-        companyProfile: z.object({
+        personalizationProfile: z.object({
           industry: z.string(),
-          size: z.enum(['startup', 'small', 'medium', 'enterprise']),
-          techMaturity: z.enum(['low', 'medium', 'high']),
-          domain: z.string().optional(),
-          priorities: z.array(z.string()).optional(),
+          market: z.string(),
+          customer: z.string(),
+          businessSize: z.string(),
         }),
-        filters: z.object({
-          category: z.string().optional(),
-          industry: z.string(),
-          priorities: z.array(z.string()).optional(),
-        }).optional(),
       })
     )
     .mutation(async ({ input }) => {
       try {
-        // Generate personalized trends based on company profile
+        const profile = input.personalizationProfile;
+        
+        // Generate personalized trends based on personalization profile
         const trends = await generateDynamicTrends(
-          input.filters?.category as any, 
+          undefined, // No category filter - generate mixed trends
           20,
           {
-            industry: input.companyProfile.industry,
-            size: input.companyProfile.size,
-            techMaturity: input.companyProfile.techMaturity,
-            domain: input.companyProfile.domain,
-            priorities: input.companyProfile.priorities,
+            industry: profile.industry,
+            market: profile.market,
+            customer: profile.customer,
+            businessSize: profile.businessSize,
           }
         );
 
+        // Update cache with new personalized trends
+        const { updateTrendsCache } = await import('../services/trend-service');
+        updateTrendsCache(trends);
+
         // Emit event for regeneration
         events.emitEvent('trend.regenerated', {
-          companyProfile: input.companyProfile,
+          personalizationProfile: profile,
           trendsCount: trends.length,
         });
 
