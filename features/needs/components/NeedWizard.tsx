@@ -9,7 +9,19 @@ import { GoalsStep } from './GoalsStep';
 import { ReviewStep } from './ReviewStep';
 import { NeedsGenerationStep } from './NeedsGenerationStep';
 import { PrioritizationStep } from './PrioritizationStep';
-import { SelectedTrendDisplay } from './SelectedTrendDisplay';
+import dynamic from 'next/dynamic';
+
+const SelectedTrendDisplay = dynamic(() => import('./SelectedTrendDisplay').then(mod => ({ default: mod.SelectedTrendDisplay })), {
+  ssr: false,
+  loading: () => (
+    <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-md">
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-4 bg-gray-300 rounded animate-pulse"></div>
+        <span className="text-sm text-gray-600">Loading selected trend...</span>
+      </div>
+    </div>
+  )
+});
 import { cva } from 'class-variance-authority';
 import { clsx } from 'clsx';
 
