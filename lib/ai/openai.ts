@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { withRetry } from '@/lib/utils/retry';
+import { getAIModel } from '@/lib/config/reader';
 
 export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -10,7 +11,7 @@ export async function generateCompletion(prompt: string): Promise<string> {
   try {
     return await withRetry(async () => {
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: getAIModel(),
         messages: [
           {
             role: 'system',

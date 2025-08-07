@@ -1,4 +1,5 @@
 import { openai } from '@/lib/ai/openai'
+import { getAIModel } from '@/lib/config/reader'
 import { serverConfig } from '@/lib/config/server'
 import type { 
   Solution, 
@@ -126,7 +127,7 @@ ${companyContext.goals && companyContext.goals.length > 0 ? `- Each solution sho
           content: prompt
         }
       ],
-      model: 'gpt-4o',
+      model: getAIModel(),
       temperature: 0.3,
       max_tokens: 3000,
       response_format: { type: 'json_object' }

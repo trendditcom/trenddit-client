@@ -112,15 +112,19 @@ export function IntelligentTrendCard({
           </div>
           
           {/* Clickable Source - consistent with row view */}
-          <a 
-            href={trend.source_url || `https://google.com/search?q=${encodeURIComponent(trend.source)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline inline-flex"
-          >
-            <ExternalLink className="h-3 w-3" />
-            <span>{trend.source}</span>
-          </a>
+          {trend.source_url ? (
+            <a 
+              href={trend.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline inline-flex"
+            >
+              <ExternalLink className="h-3 w-3" />
+              <span>{trend.source}</span>
+            </a>
+          ) : (
+            <span className="text-gray-600 text-xs">{trend.source}</span>
+          )}
         </div>
       </CardContent>
     </Card>

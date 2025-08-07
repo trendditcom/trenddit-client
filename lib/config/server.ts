@@ -1,7 +1,5 @@
 // Server-side configuration with Node.js dependencies
-import fs from 'fs';
-import path from 'path';
-import yaml from 'js-yaml';
+import { getConfig } from '@/lib/config/reader';
 
 // Full server configuration interface
 export interface ServerConfig {
@@ -115,58 +113,6 @@ export interface ServerConfig {
   };
 }
 
-// Replace environment variables in config values
-function replaceEnvVars(value: unknown): unknown {
-  if (typeof value === 'string') {
-    // Check if the string contains ${...} pattern
-    const envVarPattern = /\$\{([^}]+)\}/g;
-    return value.replace(envVarPattern, (match, expression) => {
-      // Evaluate the expression safely
-      try {
-        // Only allow specific environment variables and operations
-        const allowedVars = {
-          NODE_ENV: process.env.NODE_ENV || 'development',
-          OPENAI_API_ENDPOINT: process.env.OPENAI_API_ENDPOINT,
-        };
-        
-        // Simple evaluation for environment checks
-        if (expression.includes('===')) {
-          const [left, right] = expression.split('===').map((s: string) => s.trim());
-          const leftValue = allowedVars[left as keyof typeof allowedVars];
-          const rightValue = right.replace(/['"]/g, '');
-          return String(leftValue === rightValue);
-        }
-        
-        // OR operation
-        if (expression.includes('||')) {
-          const [primary, fallback] = expression.split('||').map((s: string) => s.trim());
-          return allowedVars[primary as keyof typeof allowedVars] || fallback.replace(/['"]/g, '');
-        }
-        
-        // Direct variable replacement
-        return allowedVars[expression as keyof typeof allowedVars] || match;
-      } catch (error) {
-        console.error(`Error evaluating expression: ${expression}`, error);
-        return match;
-      }
-    });
-  }
-  
-  if (Array.isArray(value)) {
-    return value.map(replaceEnvVars);
-  }
-  
-  if (value && typeof value === 'object') {
-    const replaced: Record<string, unknown> = {};
-    for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
-      replaced[key] = replaceEnvVars(val);
-    }
-    return replaced;
-  }
-  
-  return value;
-}
-
 // Load configuration from config.yml (server-side only)
 let configCache: ServerConfig | null = null;
 
@@ -176,32 +122,20 @@ export function loadServerConfig(): ServerConfig {
   }
 
   try {
-    const configPath = path.join(process.cwd(), 'config.yml');
-    const fileContents = fs.readFileSync(configPath, 'utf8');
-    const rawConfig = yaml.load(fileContents) as Record<string, unknown>;
+    // Use the centralized config reader and merge with defaults for missing fields
+    const baseConfig = getConfig();
+    const defaultConfig = getDefaultServerConfig();
     
-    // Replace environment variables in the config
-    const config = replaceEnvVars(rawConfig) as ServerConfig;
-    
-    // Convert string booleans to actual booleans
-    const convertBooleans = (obj: unknown): unknown => {
-      if (typeof obj === 'string' && (obj === 'true' || obj === 'false')) {
-        return obj === 'true';
-      }
-      if (Array.isArray(obj)) {
-        return obj.map(convertBooleans);
-      }
-      if (obj && typeof obj === 'object') {
-        const converted: Record<string, unknown> = {};
-        for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
-          converted[key] = convertBooleans(val);
-        }
-        return converted;
-      }
-      return obj;
+    // Merge the configs to ensure all required fields are present
+    configCache = {
+      ...defaultConfig,
+      ...baseConfig,
+      ai: {
+        ...defaultConfig.ai,
+        ...baseConfig.ai,
+      },
     };
     
-    configCache = convertBooleans(config) as ServerConfig;
     return configCache;
   } catch (error) {
     console.error('Failed to load config.yml:', error);
@@ -221,7 +155,7 @@ function getDefaultServerConfig(): ServerConfig {
     },
     ai: {
       provider: 'openai',
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       temperature: 0.7,
       max_tokens: 3000,
       retry: {

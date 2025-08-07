@@ -5,6 +5,7 @@
 
 import { z } from 'zod';
 import { openai } from '@/lib/ai/openai';
+import { getAIModel } from '@/lib/config/reader';
 
 // Data Source Types
 export const DataSourceSchema = z.object({
@@ -325,7 +326,7 @@ Respond in JSON format:
 }`;
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: getAIModel(),
         messages: [
           {
             role: 'system',

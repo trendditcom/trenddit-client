@@ -5,6 +5,7 @@
 
 import { z } from 'zod';
 import { openai } from '@/lib/ai/openai';
+import { getAIModel } from '@/lib/config/reader';
 import { 
   IntelligenceAgent,
   Context,
@@ -459,7 +460,7 @@ Respond in JSON format:
       }
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
+        model: getAIModel(),
         messages: [
           {
             role: 'system',

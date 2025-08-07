@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { publicProcedure, protectedProcedure, router } from '@/server/trpc';
 import { openai } from '@/lib/ai/openai';
+import { getAIModel } from '@/lib/config/reader';
 import { MarketIntelligenceAgent } from '../agents/market-intelligence/agent';
 import { multiAgentOrchestrator } from '../orchestration/coordinator';
 import { dataIngestionEngine } from '../pipeline/data-ingestion';
@@ -117,7 +118,7 @@ Respond in JSON format:
 }`;
 
         const conversationalAIResponse = await openai.chat.completions.create({
-          model: 'gpt-4o',
+          model: getAIModel(),
           messages: [
             {
               role: 'system',
@@ -222,7 +223,7 @@ Respond in JSON format:
 }`;
 
         const marketImpactResponse = await openai.chat.completions.create({
-          model: 'gpt-4o',
+          model: getAIModel(),
           messages: [
             {
               role: 'system',
@@ -388,7 +389,7 @@ Respond in JSON format:
 
         // Generate real-time trending topics using AI
         const trendingTopicsResponse = await openai.chat.completions.create({
-          model: 'gpt-4o',
+          model: getAIModel(),
           messages: [
             {
               role: 'system',
@@ -417,7 +418,7 @@ Respond in JSON format:
 
         // Generate real-time market signals using AI
         const marketSignalsResponse = await openai.chat.completions.create({
-          model: 'gpt-4o',
+          model: getAIModel(),
           messages: [
             {
               role: 'system',

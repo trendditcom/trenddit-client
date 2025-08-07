@@ -67,8 +67,22 @@ export function TrendCard({ trend, onAnalyze, isAnalyzing, onGenerateNeeds }: Tr
       </p>
 
       <div className="flex items-center justify-between">
-        <div className="text-xs text-gray-500">
-          {trend.source} • {new Date(trend.created_at).toLocaleDateString()}
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          {trend.source_url ? (
+            <a
+              href={trend.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-indigo-600 underline decoration-dotted underline-offset-2 transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {trend.source}
+            </a>
+          ) : (
+            <span>{trend.source}</span>
+          )}
+          <span>•</span>
+          <span>{new Date(trend.created_at).toLocaleDateString()}</span>
         </div>
 
         <div className="flex items-center gap-2">
