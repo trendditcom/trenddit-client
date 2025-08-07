@@ -8,8 +8,8 @@ import {
   TrendingUp, 
   ExternalLink, 
   Calendar,
-  Target,
-  ChevronRight
+  ChevronDown,
+  Zap
 } from 'lucide-react';
 
 interface CompanyProfile {
@@ -42,11 +42,10 @@ export function TrendRowView({
   };
 
   const getImpactColor = (score: number) => {
-    if (score >= 8) return 'text-red-600';
-    if (score >= 5) return 'text-yellow-600';
-    return 'text-green-600';
+    if (score >= 8) return 'text-red-600 bg-red-50';
+    if (score >= 5) return 'text-yellow-600 bg-yellow-50';
+    return 'text-green-600 bg-green-50';
   };
-
 
   if (trends.length === 0) {
     return (
@@ -58,111 +57,111 @@ export function TrendRowView({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {trends.map((trend) => {
         const isExpanded = expandedTrend === trend.id;
 
         return (
           <div 
             key={trend.id} 
-            className="bg-white border border-gray-200 rounded-lg hover:shadow-md transition-all duration-200"
+            className="bg-white border border-gray-200 rounded-lg hover:shadow-lg transition-all duration-200"
           >
             {/* Main Row Content */}
-            <div className="p-4">
-              <div className="grid grid-cols-12 gap-4 items-center">
+            <div className="p-5">
+              <div className="flex items-start gap-4">
                 
-                {/* Category & Impact - Col 1-2 */}
-                <div className="col-span-2 space-y-2">
-                  <Badge className={`text-xs ${getCategoryColor(trend.category)}`}>
-                    {trend.category}
-                  </Badge>
-                  <div className="flex items-center gap-1">
-                    <Target className="h-3 w-3 text-gray-400" />
-                    <span className={`text-sm font-medium ${getImpactColor(trend.impact_score)}`}>
-                      {trend.impact_score}/10
-                    </span>
+                {/* Expand/Collapse Button - Left side for better UX */}
+                <button
+                  onClick={() => setExpandedTrend(isExpanded ? null : trend.id)}
+                  className="mt-1 p-1 rounded hover:bg-gray-100 transition-colors"
+                  aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                >
+                  <ChevronDown 
+                    className={`h-5 w-5 text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} 
+                  />
+                </button>
+
+                {/* Main Content Area */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-4">
+                    
+                    {/* Left Content */}
+                    <div className="flex-1 min-w-0">
+                      {/* Title - Full width, no truncation */}
+                      <h3 className="font-semibold text-gray-900 text-base mb-2">
+                        {trend.title}
+                      </h3>
+                      
+                      {/* Metadata Row */}
+                      <div className="flex items-center gap-4 text-sm">
+                        <Badge className={`text-xs ${getCategoryColor(trend.category)}`}>
+                          {trend.category}
+                        </Badge>
+                        
+                        <div className={`px-2 py-1 rounded text-xs font-medium ${getImpactColor(trend.impact_score)}`}>
+                          Impact: {trend.impact_score}/10
+                        </div>
+                        
+                        <div className="flex items-center gap-1 text-gray-600">
+                          <Calendar className="h-3 w-3" />
+                          <span>{new Date(trend.created_at).toLocaleDateString()}</span>
+                        </div>
+                        
+                        {/* Clickable Source */}
+                        <a 
+                          href={trend.source_url || `https://google.com/search?q=${encodeURIComponent(trend.source)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          <span>{trend.source}</span>
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Right Actions - Always Visible */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button
+                        size="sm"
+                        onClick={() => onGenerateNeeds?.(trend.id)}
+                        className="flex items-center gap-2"
+                      >
+                        <Zap className="h-4 w-4" />
+                        Generate Needs
+                      </Button>
+                    </div>
                   </div>
-                </div>
-
-                {/* Title & Summary - Col 3-6 */}
-                <div className="col-span-4">
-                  <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
-                    {trend.title}
-                  </h3>
-                  <p className="text-sm text-gray-800 line-clamp-2">
-                    {trend.summary}
-                  </p>
-                </div>
-
-                {/* Spacer - Col 7-8 */}
-                <div className="col-span-2">
-                  {/* Empty spacer for layout */}
-                </div>
-
-                {/* Metadata - Col 9-10 */}
-                <div className="col-span-2 text-xs text-gray-700">
-                  <div className="flex items-center gap-1 mb-1">
-                    <Calendar className="h-3 w-3" />
-                    {new Date(trend.created_at).toLocaleDateString()}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <ExternalLink className="h-3 w-3" />
-                    {trend.source}
-                  </div>
-                </div>
-
-                {/* Actions - Col 11-12 */}
-                <div className="col-span-2 flex items-center gap-2">
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setExpandedTrend(isExpanded ? null : trend.id)}
-                    className="p-1 h-auto"
-                  >
-                    <ChevronRight 
-                      className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} 
-                    />
-                  </Button>
                 </div>
               </div>
 
               {/* Expanded Details */}
               {isExpanded && (
-                <div className="mt-4 pt-4 border-t border-gray-100 space-y-4">
-                  
-                  {/* Full Summary */}
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900 mb-2">Detailed Analysis</h4>
-                    <p className="text-sm text-gray-800 leading-relaxed">
-                      {trend.summary}
-                    </p>
-                  </div>
+                <div className="mt-4 ml-9 pt-4 border-t border-gray-100">
+                  <div className="space-y-4">
+                    {/* Full Summary */}
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-700 mb-2">Summary</h4>
+                      <p className="text-sm text-gray-800 leading-relaxed">
+                        {trend.summary}
+                      </p>
+                    </div>
 
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-3">
-
-                    <Button
-                      size="sm"
-                      onClick={() => onGenerateNeeds?.(trend.id)}
-                      className="flex items-center gap-2"
-                    >
-                      <Target className="h-4 w-4" />
-                      Generate Needs
-                    </Button>
-
-                    {trend.source_url && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(trend.source_url, '_blank')}
-                        className="flex items-center gap-2"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                        Source
-                      </Button>
-                    )}
+                    {/* Additional Actions */}
+                    <div className="flex items-center gap-3 pt-2">
+                      {trend.source_url && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open(trend.source_url, '_blank')}
+                          className="flex items-center gap-2 text-xs"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          View Full Article
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
