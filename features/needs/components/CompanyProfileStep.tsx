@@ -55,20 +55,39 @@ export function CompanyProfileStep({ onNext }: CompanyProfileStepProps) {
 
   const industries = [
     { value: 'technology', label: 'Technology' },
+    { value: 'finance', label: 'Finance' },
+    { value: 'retail', label: 'Retail' },
     { value: 'healthcare', label: 'Healthcare' },
-    { value: 'finance', label: 'Financial Services' },
-    { value: 'retail', label: 'Retail & E-commerce' },
     { value: 'manufacturing', label: 'Manufacturing' },
+    { value: 'energy', label: 'Energy' },
     { value: 'education', label: 'Education' },
-    { value: 'government', label: 'Government' },
-    { value: 'other', label: 'Other' },
+    { value: 'media', label: 'Media & Entertainment' },
+    { value: 'transportation', label: 'Transportation' },
+    { value: 'real-estate', label: 'Real Estate' },
   ];
 
   const companySizes = [
     { value: 'startup', label: 'Startup (1-50 employees)' },
-    { value: 'small', label: 'Small (51-200 employees)' },
-    { value: 'medium', label: 'Medium (201-1000 employees)' },
-    { value: 'enterprise', label: 'Enterprise (1000+ employees)' },
+    { value: 'small-medium', label: 'Small & Medium (51-500 employees)' },
+    { value: 'large', label: 'Large Enterprise (500+ employees)' },
+    { value: 'government', label: 'Government Agency' },
+    { value: 'non-profit', label: 'Non-profit Organization' },
+  ];
+
+  const markets = [
+    { value: 'us', label: 'United States' },
+    { value: 'europe', label: 'Europe' },
+    { value: 'asia', label: 'Asia Pacific' },
+    { value: 'middle-east', label: 'Middle East' },
+    { value: 'africa', label: 'Africa' },
+    { value: 'latin-america', label: 'Latin America' },
+    { value: 'global', label: 'Global' },
+  ];
+
+  const customerTypes = [
+    { value: 'business', label: 'Business (B2B)' },
+    { value: 'consumer', label: 'Consumer (B2C)' },
+    { value: 'government', label: 'Government (B2G)' },
   ];
 
   const techMaturityLevels = [
@@ -211,6 +230,46 @@ export function CompanyProfileStep({ onNext }: CompanyProfileStepProps) {
           {errors.size && (
             <p className="mt-1 text-xs text-red-600">{errors.size}</p>
           )}
+        </div>
+
+        {/* Market */}
+        <div>
+          <label htmlFor="market" className="block text-sm font-medium text-gray-700">
+            Primary Market
+          </label>
+          <select
+            id="market"
+            value={formData.market || ''}
+            onChange={(e) => handleInputChange('market', e.target.value)}
+            className={selectVariants()}
+          >
+            <option value="" className="text-gray-500">Select your primary market</option>
+            {markets.map((market) => (
+              <option key={market.value} value={market.value} className="text-gray-900">
+                {market.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Customer Type */}
+        <div>
+          <label htmlFor="customer" className="block text-sm font-medium text-gray-700">
+            Customer Type
+          </label>
+          <select
+            id="customer"
+            value={formData.customer || ''}
+            onChange={(e) => handleInputChange('customer', e.target.value)}
+            className={selectVariants()}
+          >
+            <option value="" className="text-gray-500">Select your customer type</option>
+            {customerTypes.map((customer) => (
+              <option key={customer.value} value={customer.value} className="text-gray-900">
+                {customer.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Technology Maturity */}

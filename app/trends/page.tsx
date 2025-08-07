@@ -8,6 +8,7 @@ import { TrendFilters } from '@/features/trends';
 import { TrendCategory } from '@/features/trends';
 import { EnhancedTrendGrid } from '@/features/trends/components/EnhancedTrendGrid';
 import { TrendRowView } from '@/features/trends/components/TrendRowView';
+import { TrendPersonalization, type PersonalizationProfile } from '@/features/trends/components/TrendPersonalization';
 import { trpc } from '@/lib/trpc/client';
 import { useFeatureFlag } from '@/lib/flags';
 import { 
@@ -47,6 +48,9 @@ export default function TrendsPage() {
     domain: '',
     priorities: ['scalability', 'innovation'],
   });
+
+  // Personalization state
+  const [isGeneratingPersonalized, setIsGeneratingPersonalized] = useState(false);
 
   // Feature flags
   const exportEnabled = useFeatureFlag('trends.export');
@@ -139,6 +143,26 @@ export default function TrendsPage() {
 
   const handleGenerateNeeds = (trendId: string) => {
     router.push(`/needs?trendId=${trendId}`);
+  };
+
+  const handleGeneratePersonalizedTrends = async (profile: PersonalizationProfile) => {
+    setIsGeneratingPersonalized(true);
+    try {
+      // For now, we'll just refresh the existing trends
+      // In a real implementation, this would call a personalized trends API
+      console.log('Generating personalized trends for profile:', profile);
+      
+      // Clear cache and refetch with personalization context
+      utils.trends.list.invalidate();
+      
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+    } catch (error) {
+      console.error('Failed to generate personalized trends:', error);
+    } finally {
+      setIsGeneratingPersonalized(false);
+    }
   };
 
   const handleRefreshTrends = () => {
@@ -235,10 +259,14 @@ export default function TrendsPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
             
-            {/* Company Profile & Filters */}
-            <div className="space-y-4">
+            {/* Personalization */}
+            <TrendPersonalization
+              onGenerateTrends={handleGeneratePersonalizedTrends}
+              isGenerating={isGeneratingPersonalized}
+            />
 
-              {/* Filters and Search */}
+            {/* Filters and Search */}
+            <div className="space-y-4">
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex-shrink-0">
                   <TrendFilters

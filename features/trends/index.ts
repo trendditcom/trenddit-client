@@ -2,6 +2,7 @@
 export { TrendCard } from './components/TrendCard';
 export { TrendGrid } from './components/TrendGrid';
 export { TrendFilters } from './components/TrendFilters';
+export { TrendPersonalization } from './components/TrendPersonalization';
 
 export { useTrendsStore } from './stores/trendsStore';
 

@@ -74,11 +74,11 @@ export function SolutionMatching() {
     const enrichedContext = {
       name: ctx.name || 'Your Company',
       industry: ctx.industry || 'technology',
-      size: ctx.size || 'medium',
+      size: ctx.size || 'small-medium',
       maturity: ctx.techMaturity || 'medium',
       challenges: ctx.currentChallenges || [],
       goals: ctx.primaryGoals || [],
-      budget: ctx.size === 'enterprise' ? 'High' : ctx.size === 'startup' ? 'Low' : 'Medium',
+      budget: ctx.size === 'large' || ctx.size === 'government' ? 'High' : ctx.size === 'startup' ? 'Low' : 'Medium',
       trendContext: wizard.selectedTrendId ? `This need was generated from trend analysis (Trend ID: ${wizard.selectedTrendId})` : undefined
     }
     

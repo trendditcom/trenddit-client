@@ -6,15 +6,31 @@ export const CompanyContextSchema = z.object({
   name: z.string().min(1, 'Company name is required'),
   industry: z.enum([
     'technology',
-    'healthcare', 
     'finance',
     'retail',
+    'healthcare',
     'manufacturing',
+    'energy',
     'education',
-    'government',
-    'other'
+    'media',
+    'transportation',
+    'real-estate'
   ]),
-  size: z.enum(['startup', 'small', 'medium', 'enterprise']),
+  market: z.enum([
+    'us',
+    'europe',
+    'asia',
+    'middle-east',
+    'africa',
+    'latin-america',
+    'global'
+  ]).optional(),
+  customer: z.enum([
+    'business',
+    'consumer',
+    'government'
+  ]).optional(),
+  size: z.enum(['startup', 'small-medium', 'large', 'government', 'non-profit']),
   techMaturity: z.enum(['low', 'medium', 'high']),
   currentChallenges: z.array(z.string()).min(1, 'Select at least one challenge'),
   primaryGoals: z.array(z.string()).min(1, 'Select at least one goal'),
