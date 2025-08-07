@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/lib/ui/button';
 import { Input } from '@/lib/ui/input';
@@ -51,6 +51,13 @@ export default function TrendsPage() {
 
   // Personalization state
   const [isGeneratingPersonalized, setIsGeneratingPersonalized] = useState(false);
+
+  // Hydration-safe state to prevent SSR/client mismatches
+  const [isHydrated, setIsHydrated] = useState(false);
+  
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   // Feature flags
   const exportEnabled = useFeatureFlag('trends.export');
@@ -241,15 +248,15 @@ export default function TrendsPage() {
                 <Button
                   variant="outline"
                   onClick={handleRefreshTrends}
-                  disabled={isLoading}
+                  disabled={isHydrated ? isLoading : false}
                   className="flex items-center gap-2"
                   title="Refresh trends - get latest market intelligence"
                 >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-4 w-4 ${isHydrated && isLoading ? 'animate-spin' : ''}`} />
                   Refresh
                 </Button>
 
-                {exportEnabled && allTrends && allTrends.length > 0 && (
+                {exportEnabled && isHydrated && allTrends && allTrends.length > 0 && (
                   <Button
                     variant="outline"
                     onClick={handleExport}
@@ -319,14 +326,14 @@ export default function TrendsPage() {
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
-                  Trend Intelligence ({filteredTrends.length})
+                  Trend Intelligence ({isHydrated ? filteredTrends.length : 0})
                 </h2>
                 <div className="text-sm text-gray-700 font-medium">
                   View: {viewMode === 'cards' ? 'Card Grid' : 'Detailed Rows'}
                 </div>
               </div>
 
-              {isLoading ? (
+              {!isHydrated || isLoading ? (
                 <>
                   <ProgressLoader message="Loading market trends..." />
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
