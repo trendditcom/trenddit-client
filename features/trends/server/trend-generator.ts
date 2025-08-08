@@ -5,8 +5,10 @@
  */
 
 import { openai } from '@/lib/ai/openai';
-import { getAIModel } from '@/lib/config/reader';
 import { Trend, TrendCategory } from '../types/trend';
+import { loadTrendSettings, buildTrendGenerationPrompt, getAIModelFromSettings } from '../utils/settings-loader';
+import { verifyUrl, isValidArticleUrl } from '../utils/url-verification';
+import { TrendPromptSettings } from '../types/settings';
 
 interface CompanyProfile {
   industry: string;
@@ -34,107 +36,26 @@ export async function generateDynamicTrends(
 ): Promise<Trend[]> {
   const currentDate = new Date();
   const currentMonth = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const todayFormatted = currentDate.toISOString().split('T')[0];
+  
+  // Load current settings from localStorage (with fallback to defaults)
+  const settings = loadTrendSettings();
   
   // Always generate balanced mix regardless of category parameter
   // This ensures client-side filtering works properly
   const trendsPerCategory = Math.ceil(limit / 4); // Divide among 4 categories
-  const categoryPrompt = `Generate exactly ${trendsPerCategory} trends for EACH of these categories:
-1. CONSUMER trends (${trendsPerCategory} trends) - AI products, services, and experiences for end consumers
-2. COMPETITION trends (${trendsPerCategory} trends) - Competitive moves, market dynamics, company strategies  
-3. ECONOMY trends (${trendsPerCategory} trends) - Economic impacts, market valuations, financial implications
-4. REGULATION trends (${trendsPerCategory} trends) - Regulatory developments, compliance, policy changes
-
-ENSURE BALANCED DISTRIBUTION: The response must contain ${trendsPerCategory} trends from each category for a total of ${limit} trends.`;
-
-  // Build personalization context
-  const personalizationContext = companyProfile ? `
-PERSONALIZATION CONTEXT:
-- Target industry: ${companyProfile.industry}
-${companyProfile.market ? `- Primary market: ${companyProfile.market}` : ''}
-${companyProfile.customer ? `- Customer type: ${companyProfile.customer}` : ''}
-${companyProfile.businessSize ? `- Business size: ${companyProfile.businessSize}` : ''}
-${companyProfile.domain ? `- Company domain: ${companyProfile.domain}` : ''}
-${companyProfile.priorities ? `- Key priorities: ${companyProfile.priorities.join(', ')}` : ''}
-
-PERSONALIZATION REQUIREMENTS:
-- Prioritize trends most relevant to ${companyProfile.industry} industry
-${companyProfile.market ? `- Focus on trends impacting the ${companyProfile.market} market` : ''}
-${companyProfile.customer ? `- Emphasize trends affecting ${companyProfile.customer} customers` : ''}
-${companyProfile.businessSize ? `- Consider the scale and resources of ${companyProfile.businessSize} businesses` : ''}
-- Include specific implications for this business profile in summaries
-` : '';
-
-  const prompt = `You are a leading AI and technology market analyst with real-time knowledge of current events. Generate ${limit} current, relevant AI/technology trends for ${currentMonth} with BALANCED CATEGORY DISTRIBUTION.
-
-CRITICAL REQUIREMENTS:
-- Trends MUST be current and relevant to ${currentMonth}
-- Each trend should reflect actual market developments that would be happening NOW
-- Use realistic, current data points and statistics
-- Include specific company names, products, and initiatives that are relevant TODAY
-- Mix breaking news with ongoing developments
-- MUST include balanced distribution across all 4 categories
-${companyProfile ? '- Personalize trends for the specified company profile' : ''}
-
-${personalizationContext}
-
-${categoryPrompt}
-
-For each trend, provide:
-1. A compelling, specific headline that could appear in today's tech news
-2. A detailed 2-3 sentence summary with specific data points, percentages, or concrete details
-3. An impact score (1-10) based on significance for enterprises
-4. A credible source that would report this (e.g., "TechCrunch", "Reuters", "Bloomberg", "The Verge")
-5. A REAL, SPECIFIC article URL that directly relates to this trend (NOT homepage or category pages)
-6. The trend category: consumer, competition, economy, or regulation
-
-CRITICAL SOURCE URL REQUIREMENTS:
-- Generate ACTUAL, SPECIFIC article URLs that would contain this exact story
-- The URL must be a deep link to a real article about this specific trend, not a homepage
-- Use realistic article URL patterns from major tech publications:
-  - TechCrunch: https://techcrunch.com/2025/01/15/specific-article-title-about-trend/
-  - Reuters: https://www.reuters.com/technology/ai/specific-story-slug-2025-01-15/
-  - Bloomberg: https://www.bloomberg.com/news/articles/2025-01-15/specific-headline-slug
-  - The Verge: https://www.theverge.com/2025/1/15/specific-article-about-trend
-  - VentureBeat: https://venturebeat.com/ai/specific-trend-story-january-2025/
-  - Wired: https://www.wired.com/story/specific-trend-article-title/
-  - Ars Technica: https://arstechnica.com/ai/2025/01/specific-article-slug/
-- URL should match the headline and be something that publication would realistically publish
-- Include current date (January 2025) in URL structure where publications typically do
-- Make URLs believable and specific to the exact trend being described
-- DO NOT use example.com, placeholder URLs, or generic category pages
-
-Current context to consider:
-- We're in ${currentMonth}, well into 2025
-- AI adoption is mainstream across enterprises
-- Regulatory frameworks like EU AI Act are now in effect
-- Major tech companies have mature AI products
-- Focus on what's NEW and EMERGING, not old news
-
-CITATION REQUIREMENTS:
-- Each trend must be based on a realistic story that a major tech publication would cover
-- Generate specific article URLs that match the headline exactly
-- Use current date patterns (January 2025) in URLs where appropriate
-- Ensure URL slug matches the story title and content
-- Make the source citation credible and verifiable-looking
-
-Return as JSON array with this structure:
-[
-  {
-    "title": "OpenAI Launches GPT-5 with Revolutionary Reasoning Capabilities",
-    "summary": "OpenAI announced GPT-5 today with breakthrough reasoning abilities, achieving 95% accuracy on complex logical problems and reducing hallucinations by 80% compared to GPT-4. The model will be available through API access starting February 2025 with enterprise pricing at $0.10 per 1K tokens.",
-    "impact_score": 9,
-    "source": "TechCrunch",
-    "source_url": "https://techcrunch.com/2025/01/15/openai-launches-gpt-5-revolutionary-reasoning-capabilities/",
-    "category": "consumer"
-  }
-]
-
-IMPORTANT: Each source_url must be a realistic, specific article URL that matches the headline and would actually exist for this story. The URL should follow the publication's typical URL structure and include relevant dates/slugs.`;
+  
+  // Build the complete prompt using settings-based approach
+  const prompt = buildTrendGenerationPrompt(
+    settings,
+    currentMonth,
+    limit,
+    trendsPerCategory,
+    companyProfile
+  );
 
   try {
     const completion = await openai.chat.completions.create({
-      model: getAIModel(),
+      model: getAIModelFromSettings(),
       messages: [
         {
           role: 'system',
@@ -145,8 +66,8 @@ IMPORTANT: Each source_url must be a realistic, specific article URL that matche
           content: prompt
         }
       ],
-      temperature: 0.7, // Higher temperature for more variety
-      max_tokens: 3000,
+      temperature: settings.modelSettings.temperature,
+      max_tokens: settings.modelSettings.maxTokens,
       response_format: { type: 'json_object' }
     });
 
@@ -172,17 +93,29 @@ IMPORTANT: Each source_url must be a realistic, specific article URL that matche
     const contentSeed = Date.now(); // Use consistent timestamp for this batch
     
     // Transform AI response to Trend objects with current dates
-    const trends: Trend[] = trendsData.slice(0, limit).map((trend, index) => ({
-      id: `trend_${contentSeed}_${index}`,
-      title: trend.title || `AI Trend ${index + 1}`,
-      summary: trend.summary || 'Emerging AI trend with significant market impact.',
-      category: validateCategory(trend.category),
-      impact_score: Math.min(10, Math.max(1, trend.impact_score || 7)),
-      source: trend.source || 'Industry Analysis',
-      source_url: validateAndFixSourceUrl(trend.source_url, trend.source || 'TechCrunch', trend.title),
-      created_at: new Date(currentDate.getTime() - (index * 24 * 60 * 60 * 1000)), // Stagger dates
-      updated_at: new Date(),
-    }));
+    const trends: Trend[] = await Promise.all(
+      trendsData.slice(0, limit).map(async (trend, index) => {
+        const urlValidationResult = await validateAndFixSourceUrlWithStatus(
+          trend.source_url, 
+          trend.source || 'TechCrunch', 
+          trend.title,
+          settings
+        );
+        
+        return {
+          id: `trend_${contentSeed}_${index}`,
+          title: trend.title || `AI Trend ${index + 1}`,
+          summary: trend.summary || 'Emerging AI trend with significant market impact.',
+          category: validateCategory(trend.category),
+          impact_score: Math.min(10, Math.max(1, trend.impact_score || 7)),
+          source: trend.source || 'Industry Analysis',
+          source_url: urlValidationResult.url,
+          source_verified: urlValidationResult.verified,
+          created_at: new Date(currentDate.getTime() - (index * 24 * 60 * 60 * 1000)), // Stagger dates
+          updated_at: new Date(),
+        };
+      })
+    );
 
     return trends;
   } catch (error) {
@@ -216,46 +149,74 @@ function validateCategory(category: string): TrendCategory {
 }
 
 /**
- * Validate source URLs to ensure they look realistic and specific
+ * Validate source URLs using settings-based verification with status
  */
-function validateAndFixSourceUrl(url: string | undefined, sourceName: string, title?: string): string {
-  // If URL is provided and looks like a real article URL, use it
-  if (url && 
-      url.startsWith('http') && 
-      !url.includes('example.com') && 
-      !url.includes('placeholder') &&
-      !url.includes('localhost') &&
-      isValidArticleUrl(url)) {
-    return url;
+async function validateAndFixSourceUrlWithStatus(
+  url: string | undefined, 
+  sourceName: string, 
+  title?: string,
+  settings?: TrendPromptSettings
+): Promise<{ url: string; verified: boolean }> {
+  // If no URL provided, handle based on settings
+  if (!url || url.trim() === '') {
+    if (settings?.urlVerification.fallbackToGenerated) {
+      return { url: generatePlaceholderArticleUrl(sourceName, title), verified: false };
+    } else {
+      return { url: '', verified: false }; // No URL if fallback disabled
+    }
   }
 
-  // If no valid URL provided, generate a placeholder article URL based on source and title
-  return generatePlaceholderArticleUrl(sourceName, title);
-}
+  // Basic format validation first
+  if (!url.startsWith('http') || 
+      url.includes('example.com') || 
+      url.includes('placeholder') ||
+      url.includes('localhost')) {
+    
+    if (settings?.urlVerification.fallbackToGenerated) {
+      return { url: generatePlaceholderArticleUrl(sourceName, title), verified: false };
+    } else {
+      return { url: '', verified: false };
+    }
+  }
 
-/**
- * Check if URL looks like a specific article URL (not a homepage/category page)
- */
-function isValidArticleUrl(url: string): boolean {
-  // Valid article URLs typically have:
-  // - Date patterns (2025, 01, 15)
-  // - Article slugs with hyphens
-  // - Specific paths beyond just domain/category
-  
-  const validPatterns = [
-    /\/\d{4}\/\d{1,2}\/\d{1,2}\//,  // Date pattern: /2025/01/15/
-    /\/\d{4}\/[a-z0-9-]+/,          // Year + slug: /2025/article-slug
-    /\/story\/[a-z0-9-]+/,          // Wired pattern: /story/article-slug
-    /\/articles\/\d{4}-\d{2}-\d{2}\//, // Bloomberg: /articles/2025-01-15/
-    /\/news\/[a-z0-9-]+/,           // General news pattern
-    /\/[a-z]+\/\d{4}\/\d{2}\/[a-z0-9-]+/, // Category/year/month/slug
-  ];
-  
-  // Check if URL matches any article pattern and isn't just a category page
-  const hasArticlePattern = validPatterns.some(pattern => pattern.test(url));
-  const isNotCategoryPage = !url.match(/\/(category|topic|section|tag)\/[^/]+\/?$/);
-  
-  return hasArticlePattern && isNotCategoryPage;
+  // Check if URL looks like a valid article URL
+  if (!isValidArticleUrl(url)) {
+    if (settings?.urlVerification.fallbackToGenerated) {
+      return { url: generatePlaceholderArticleUrl(sourceName, title), verified: false };
+    } else {
+      return { url: '', verified: false };
+    }
+  }
+
+  // If URL verification is enabled, actually verify the URL exists
+  if (settings?.urlVerification.enabled) {
+    try {
+      const verificationResult = await verifyUrl(url, settings.urlVerification.timeout);
+      
+      if (verificationResult.isValid) {
+        return { url, verified: true }; // URL is real and accessible
+      } else {
+        console.log(`URL verification failed for ${url}: ${verificationResult.error}`);
+        
+        if (settings.urlVerification.fallbackToGenerated) {
+          return { url: generatePlaceholderArticleUrl(sourceName, title), verified: false };
+        } else {
+          return { url: '', verified: false }; // No fallback - return empty to indicate unverified
+        }
+      }
+    } catch (error) {
+      console.warn(`URL verification error for ${url}:`, error);
+      
+      if (settings.urlVerification.fallbackToGenerated) {
+        return { url: generatePlaceholderArticleUrl(sourceName, title), verified: false };
+      } else {
+        return { url: '', verified: false };
+      }
+    }
+  }
+
+  // URL verification disabled - assume valid if it passes basic validation
+  return { url, verified: true };
 }
 
 /**

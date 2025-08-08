@@ -1,17 +1,24 @@
 import OpenAI from 'openai';
 import { withRetry } from '@/lib/utils/retry';
-import { getAIModel } from '@/lib/config/reader';
 
 export const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 
+/**
+ * Get AI model with safe fallback for client environments
+ */
+function getSafeAIModel(): string {
+  // Use default model for client-server compatibility
+  return 'gpt-4o-mini';
+}
+
 export async function generateCompletion(prompt: string): Promise<string> {
   try {
     return await withRetry(async () => {
       const response = await openai.chat.completions.create({
-        model: getAIModel(),
+        model: getSafeAIModel(),
         messages: [
           {
             role: 'system',

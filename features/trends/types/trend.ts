@@ -11,6 +11,7 @@ export const TrendSchema = z.object({
   impact_score: z.number().min(1).max(10),
   source: z.string(),
   source_url: z.string().optional(),
+  source_verified: z.boolean().optional(), // Whether the source URL was verified as real
   created_at: z.string().or(z.date()),
   updated_at: z.string().or(z.date()),
 });

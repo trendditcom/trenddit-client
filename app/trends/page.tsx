@@ -9,6 +9,8 @@ import { TrendCategory } from '@/features/trends';
 import { EnhancedTrendGrid } from '@/features/trends/components/EnhancedTrendGrid';
 import { TrendRowView } from '@/features/trends/components/TrendRowView';
 import { TrendPersonalization, type PersonalizationProfile } from '@/features/trends/components/TrendPersonalization';
+import { TrendSettings } from '@/features/trends/components/TrendSettings';
+import { TrendPromptSettings } from '@/features/trends/types/settings';
 import { trpc } from '@/lib/trpc/client';
 import { useFeatureFlag } from '@/lib/flags';
 import { 
@@ -16,7 +18,8 @@ import {
   Download,
   Grid3X3,
   List,
-  Search
+  Search,
+  Settings
 } from 'lucide-react';
 import { ErrorDisplay } from '@/lib/ui/error-display';
 import { TrendCardSkeleton, ProgressLoader } from '@/lib/ui/skeleton';
@@ -50,6 +53,9 @@ export default function TrendsPage() {
 
   // Personalization state
   const [isGeneratingPersonalized, setIsGeneratingPersonalized] = useState(false);
+
+  // Settings state
+  const [showSettings, setShowSettings] = useState(false);
 
   // Hydration-safe state to prevent SSR/client mismatches
   const [isHydrated, setIsHydrated] = useState(false);
@@ -178,6 +184,15 @@ export default function TrendsPage() {
     );
   };
 
+  const handleSettingsUpdate = (settings: TrendPromptSettings) => {
+    // Settings are automatically saved to localStorage by the settings component
+    // Invalidate trends cache to trigger regeneration with new settings
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _ = settings; // Required by interface but not used here
+    utils.trends.list.invalidate();
+    utils.trends.list.refetch();
+  };
+
 
 
   return (
@@ -237,6 +252,17 @@ export default function TrendsPage() {
                     {exportMutation.isPending ? 'Exporting...' : 'Export'}
                   </Button>
                 )}
+
+                {/* Settings Button */}
+                <Button
+                  variant="outline"
+                  onClick={() => setShowSettings(true)}
+                  className="flex items-center gap-2 text-sm"
+                  title="Trend Generation Settings"
+                >
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </Button>
                 
               </div>
             </div>
@@ -328,6 +354,13 @@ export default function TrendsPage() {
             </div>
         </div>
       </div>
+
+      {/* Settings Dialog */}
+      <TrendSettings
+        open={showSettings}
+        onOpenChange={setShowSettings}
+        onSettingsUpdate={handleSettingsUpdate}
+      />
     </div>
   );
 }

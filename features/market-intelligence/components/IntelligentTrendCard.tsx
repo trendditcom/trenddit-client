@@ -12,7 +12,10 @@ import { Trend } from '@/features/trends/types/trend';
 import { 
   Zap, 
   ExternalLink, 
-  Calendar 
+  Calendar,
+  Shield,
+  ShieldAlert,
+  ShieldX
 } from 'lucide-react';
 
 interface IntelligentTrendCardProps {
@@ -23,6 +26,18 @@ interface IntelligentTrendCardProps {
     techMaturity: 'low' | 'medium' | 'high';
   };
   onGenerateNeeds?: (trendId: string) => void;
+}
+
+/**
+ * Get appropriate icon for source verification status
+ */
+function getSourceVerificationIcon(verified?: boolean) {
+  if (verified === true) {
+    return <Shield className="h-3 w-3 text-green-500" />;
+  } else if (verified === false) {
+    return <ShieldAlert className="h-3 w-3 text-orange-500" />;
+  }
+  return <ShieldAlert className="h-3 w-3 text-gray-400" />;
 }
 
 export function IntelligentTrendCard({ 
@@ -111,19 +126,34 @@ export function IntelligentTrendCard({
             <span>{new Date(trend.created_at).toLocaleDateString()}</span>
           </div>
           
-          {/* Clickable Source - consistent with row view */}
+          {/* Clickable Source with Verification Status */}
           {trend.source_url ? (
             <a 
               href={trend.source_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline inline-flex"
+              className={`flex items-center gap-1 hover:underline inline-flex ${
+                trend.source_verified 
+                  ? 'text-blue-600 hover:text-blue-800' 
+                  : 'text-orange-600 hover:text-orange-800'
+              }`}
+              title={
+                trend.source_verified === true 
+                  ? "Verified source - URL confirmed accessible"
+                  : trend.source_verified === false 
+                    ? "Unverified source - URL may not be real"
+                    : "Source verification unknown"
+              }
             >
+              {getSourceVerificationIcon(trend.source_verified)}
               <ExternalLink className="h-3 w-3" />
               <span>{trend.source}</span>
             </a>
           ) : (
-            <span className="text-gray-600 text-xs">{trend.source}</span>
+            <div className="flex items-center gap-1">
+              <ShieldX className="h-3 w-3 text-red-500" />
+              <span className="text-red-600 text-xs">{trend.source} (No Link)</span>
+            </div>
           )}
         </div>
       </CardContent>
