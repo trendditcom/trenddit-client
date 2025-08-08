@@ -20,9 +20,25 @@ import {
   Lock,
   Edit3,
   ArrowLeft,
-  Zap
+  Zap,
+  Eye,
+  Copy,
+  Play,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { TrendPromptSettings, DEFAULT_TREND_SETTINGS, SettingsState } from '@/features/trends/types/settings';
+import { buildTrendGenerationPrompt } from '@/features/trends/utils/settings-loader';
+import { openai } from '@/lib/ai/openai';
+
+interface TestTrend {
+  title: string;
+  summary: string;
+  category: string;
+  impact_score: number;
+  source: string;
+  source_url?: string;
+}
 
 const SETTINGS_STORAGE_KEY = 'trenddit_prompt_settings';
 
@@ -32,6 +48,13 @@ export default function SettingsPage() {
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [copySuccess, setCopySuccess] = useState<'system' | 'user' | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [testResult, setTestResult] = useState<{
+    trends?: TestTrend[];
+    error?: string;
+    timestamp?: Date;
+  } | null>(null);
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -111,6 +134,105 @@ export default function SettingsPage() {
     }));
     setHasChanges(true);
     setSaveSuccess(false);
+  };
+
+  const handleCopy = async (content: string, type: 'system' | 'user') => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopySuccess(type);
+      setTimeout(() => setCopySuccess(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+    }
+  };
+
+  const generatePreviewPrompts = () => {
+    const currentDate = new Date();
+    const currentMonth = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    
+    const systemMessage = 'You are a market intelligence analyst with deep knowledge of current AI and technology trends. Generate realistic, current trends based on actual market conditions. Always return valid JSON.';
+    
+    const userPrompt = buildTrendGenerationPrompt(
+      settings,
+      currentMonth,
+      20,
+      5, // trendsPerCategory
+      undefined // no company profile for preview
+    );
+
+    return { systemMessage, userPrompt };
+  };
+
+  const handleTestGeneration = async () => {
+    setIsGenerating(true);
+    setTestResult(null);
+
+    try {
+      const { systemMessage, userPrompt } = generatePreviewPrompts();
+
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: systemMessage
+          },
+          {
+            role: 'user',
+            content: userPrompt
+          }
+        ],
+        temperature: settings.modelSettings.temperature,
+        max_tokens: settings.modelSettings.maxTokens,
+        response_format: { type: 'json_object' }
+      });
+
+      const response = completion.choices[0]?.message?.content;
+      if (!response) {
+        throw new Error('No response from OpenAI');
+      }
+
+      // Parse the response - handle both array and object with array property
+      let trendsData: TestTrend[];
+      const parsed = JSON.parse(response);
+      
+      if (Array.isArray(parsed)) {
+        trendsData = parsed;
+      } else if (parsed.trends && Array.isArray(parsed.trends)) {
+        trendsData = parsed.trends;
+      } else {
+        throw new Error('Invalid response format from AI');
+      }
+
+      setTestResult({
+        trends: trendsData,
+        timestamp: new Date()
+      });
+
+    } catch (error) {
+      console.error('Test generation failed:', error);
+      
+      let errorMessage = 'Failed to generate test trends. Please try again.';
+      
+      if (error instanceof Error) {
+        if (error.message.includes('API key')) {
+          errorMessage = 'OpenAI API key is not configured. Please set OPENAI_API_KEY in your environment variables.';
+        } else if (error.message.includes('rate limit')) {
+          errorMessage = 'Rate limit exceeded. Please wait a few minutes before trying again.';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your internet connection and try again.';
+        } else if (error.message.includes('JSON')) {
+          errorMessage = 'AI returned invalid JSON. Try adjusting your prompt settings and try again.';
+        }
+      }
+
+      setTestResult({
+        error: errorMessage,
+        timestamp: new Date()
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -211,6 +333,20 @@ export default function SettingsPage() {
                 >
                   <Settings className="h-4 w-4 mr-2" />
                   Model Settings
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="preview" 
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-white px-8 py-4"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  Prompt Preview
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="test" 
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-500 data-[state=active]:bg-white px-8 py-4"
+                >
+                  <Play className="h-4 w-4 mr-2" />
+                  Test Generation
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -455,6 +591,308 @@ export default function SettingsPage() {
                     <AlertDescription>
                       <strong>Model:</strong> Currently using gpt-4o-mini for optimal cost/performance balance. 
                       Model selection may become configurable in future versions.
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="preview" className="space-y-8 mt-0">
+                <Alert>
+                  <Eye className="h-4 w-4" />
+                  <AlertDescription>
+                    This shows the actual prompts sent to the AI model, combining your customizations with system-controlled sections.
+                  </AlertDescription>
+                </Alert>
+
+                {(() => {
+                  const { systemMessage, userPrompt } = generatePreviewPrompts();
+                  return (
+                    <div className="space-y-6">
+                      {/* System Message Preview */}
+                      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                              <h3 className="text-lg font-semibold text-gray-900">System Message</h3>
+                              <Badge variant="outline" className="text-gray-600 border-gray-200">
+                                AI Role Definition
+                              </Badge>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCopy(systemMessage, 'system')}
+                              className="flex items-center gap-2"
+                            >
+                              {copySuccess === 'system' ? (
+                                <>
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                  Copied!
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="h-4 w-4" />
+                                  Copy
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="p-6">
+                          <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-50 p-4 rounded border overflow-x-auto">
+                            {systemMessage}
+                          </pre>
+                        </div>
+                      </div>
+
+                      {/* User Prompt Preview */}
+                      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                              <h3 className="text-lg font-semibold text-gray-900">User Prompt</h3>
+                              <Badge variant="outline" className="text-indigo-600 border-indigo-200">
+                                Complete Instructions
+                              </Badge>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCopy(userPrompt, 'user')}
+                              className="flex items-center gap-2"
+                            >
+                              {copySuccess === 'user' ? (
+                                <>
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                  Copied!
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="h-4 w-4" />
+                                  Copy
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                        <div className="p-6">
+                          <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-50 p-4 rounded border overflow-x-auto max-h-96 overflow-y-auto">
+                            {userPrompt}
+                          </pre>
+                        </div>
+                      </div>
+
+                      {/* Model Configuration Summary */}
+                      <div className="bg-white border border-gray-200 rounded-lg p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                          <Settings className="h-5 w-5 text-gray-600" />
+                          Model Configuration
+                        </h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div className="bg-gray-50 p-3 rounded">
+                            <div className="text-gray-600 mb-1">Model</div>
+                            <div className="font-medium">gpt-4o-mini</div>
+                          </div>
+                          <div className="bg-gray-50 p-3 rounded">
+                            <div className="text-gray-600 mb-1">Temperature</div>
+                            <div className="font-medium">{settings.modelSettings.temperature}</div>
+                          </div>
+                          <div className="bg-gray-50 p-3 rounded">
+                            <div className="text-gray-600 mb-1">Max Tokens</div>
+                            <div className="font-medium">{settings.modelSettings.maxTokens.toLocaleString()}</div>
+                          </div>
+                          <div className="bg-gray-50 p-3 rounded">
+                            <div className="text-gray-600 mb-1">Response Format</div>
+                            <div className="font-medium">JSON Object</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Help Section */}
+                      <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertDescription className="text-sm">
+                          <strong>How to use this preview:</strong> The system message defines the AI&apos;s role, while the user prompt contains your 
+                          custom settings plus system requirements. Any changes you make in other tabs will be reflected here immediately. 
+                          Use the copy buttons to export these prompts for testing in other AI tools.
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  );
+                })()}
+              </TabsContent>
+
+              <TabsContent value="test" className="space-y-8 mt-0">
+                <Alert>
+                  <Play className="h-4 w-4" />
+                  <AlertDescription>
+                    Test your current prompt settings by generating actual trends. This uses your OpenAI API key and will consume tokens.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="space-y-6">
+                  {/* Test Generation Controls */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                          <Play className="h-5 w-5 text-indigo-600" />
+                          Generate Test Trends
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Click to generate {20} trends using your current settings
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleTestGeneration}
+                        disabled={isGenerating}
+                        className="min-w-[140px] flex items-center gap-2"
+                      >
+                        {isGenerating ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Play className="h-4 w-4" />
+                            Generate Trends
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Current Settings Summary */}
+                    <div className="bg-gray-50 rounded-lg p-4 border">
+                      <div className="text-sm font-medium text-gray-900 mb-2">Current Test Configuration:</div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                        <div>
+                          <span className="text-gray-600">Model:</span>
+                          <div className="font-medium">gpt-4o-mini</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Temperature:</span>
+                          <div className="font-medium">{settings.modelSettings.temperature}</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Max Tokens:</span>
+                          <div className="font-medium">{settings.modelSettings.maxTokens.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">URL Verification:</span>
+                          <div className="font-medium">{settings.urlVerification.enabled ? 'Enabled' : 'Disabled'}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Test Results */}
+                  {testResult && (
+                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            {testResult.error ? (
+                              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                            ) : (
+                              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                            )}
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {testResult.error ? 'Generation Failed' : 'Test Results'}
+                            </h3>
+                            {testResult.timestamp && (
+                              <Badge variant="outline" className="text-gray-600 border-gray-200">
+                                {testResult.timestamp.toLocaleTimeString()}
+                              </Badge>
+                            )}
+                          </div>
+                          {testResult.trends && (
+                            <Badge className="bg-green-100 text-green-800 border-green-200">
+                              {testResult.trends.length} trends generated
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="p-6">
+                        {testResult.error ? (
+                          <Alert>
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertDescription className="text-red-800">
+                              {testResult.error}
+                            </AlertDescription>
+                          </Alert>
+                        ) : (
+                          <div className="space-y-4">
+                            {testResult.trends?.map((trend, index) => (
+                              <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-2">
+                                <div className="flex items-start justify-between gap-4">
+                                  <h4 className="font-semibold text-gray-900 leading-tight">
+                                    {trend.title}
+                                  </h4>
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    <Badge className={`text-xs ${
+                                      trend.category === 'consumer' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                      trend.category === 'competition' ? 'bg-purple-100 text-purple-800 border-purple-200' :
+                                      trend.category === 'economy' ? 'bg-green-100 text-green-800 border-green-200' :
+                                      trend.category === 'regulation' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                                      'bg-gray-100 text-gray-800 border-gray-200'
+                                    }`}>
+                                      {trend.category}
+                                    </Badge>
+                                    <div className="text-xs text-gray-600">
+                                      Impact: {trend.impact_score}/10
+                                    </div>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-gray-700 leading-relaxed">
+                                  {trend.summary}
+                                </p>
+                                <div className="flex items-center gap-4 text-xs text-gray-500">
+                                  <span>Source: {trend.source}</span>
+                                  {trend.source_url && (
+                                    <a 
+                                      href={trend.source_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 hover:text-blue-800 underline"
+                                    >
+                                      View Article
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                            
+                            {testResult.trends && testResult.trends.length > 0 && (
+                              <div className="mt-6 p-4 bg-green-50 rounded-lg border border-green-200">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                  <span className="text-sm font-medium text-green-900">
+                                    Generation Successful!
+                                  </span>
+                                </div>
+                                <p className="text-sm text-green-800">
+                                  Your prompt settings generated {testResult.trends.length} trends successfully. 
+                                  If you&apos;re satisfied with these results, your settings are working well.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Help Section */}
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      <strong>Testing tips:</strong> This test uses the same logic as the main trend generation. 
+                      If you encounter errors, check your OpenAI API key configuration or adjust your prompt settings. 
+                      Rate limits may apply based on your OpenAI plan.
                     </AlertDescription>
                   </Alert>
                 </div>
