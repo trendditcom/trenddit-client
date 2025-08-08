@@ -48,7 +48,24 @@ export const trendsRouter = router({
     .query(async ({ input }) => {
       try {
         // Use the caching service first
-        const trend = await getTrendById(input.trendId);
+        let trend = await getTrendById(input.trendId);
+        
+        // If not found in cache, try generating fresh trends and search again
+        if (!trend) {
+          try {
+            // Generate fresh trends to ensure we have the latest set
+            const freshTrends = await generateDynamicTrends(undefined, 20);
+            
+            // Update cache with fresh trends
+            const { updateTrendsCache } = await import('../services/trend-service');
+            updateTrendsCache(freshTrends);
+            
+            // Try finding the trend again
+            trend = freshTrends.find(t => t.id === input.trendId) || null;
+          } catch (generationError) {
+            console.warn('Failed to generate fresh trends for trend lookup:', generationError);
+          }
+        }
         
         if (!trend) {
           throw new TRPCError({

@@ -94,14 +94,8 @@ export async function getTrendById(trendId: string): Promise<Trend | null> {
       }
     }
     
-    // If not found in cache, the trend doesn't exist
-    // This can happen if:
-    // 1. User navigated directly to needs page without loading trends first
-    // 2. Trends cache was cleared 
-    // 3. Invalid trend ID
-    
-    // Return null if not found - this will result in a NOT_FOUND error
-    // which is the correct behavior when a trend doesn't exist
+    // If not found in cache, return null
+    // The tRPC router will handle generating fresh trends if needed
     return null;
   } catch (error) {
     console.error('Error fetching trend by ID:', error);

@@ -89,8 +89,17 @@ export async function generateDynamicTrends(
       throw new Error('Invalid response format from AI');
     }
 
-    // Create a consistent seed for trend IDs based on content
-    const contentSeed = Date.now(); // Use consistent timestamp for this batch
+    // Create stable trend IDs based on content hash instead of timestamp
+    // This ensures trends with same content get same IDs across regenerations
+    const createTrendId = (title: string, summary: string, index: number): string => {
+      // Create a simple hash from title + summary for consistency
+      const content = (title + summary).toLowerCase().replace(/[^a-z0-9]/g, '');
+      const hash = content.split('').reduce((a, b) => {
+        a = ((a << 5) - a) + b.charCodeAt(0);
+        return a & a; // Convert to 32-bit integer
+      }, 0);
+      return `trend_${Math.abs(hash)}_${index}`;
+    };
     
     // Transform AI response to Trend objects with current dates
     const trends: Trend[] = await Promise.all(
@@ -103,7 +112,11 @@ export async function generateDynamicTrends(
         );
         
         return {
-          id: `trend_${contentSeed}_${index}`,
+          id: createTrendId(
+            trend.title || `AI Trend ${index + 1}`, 
+            trend.summary || 'Emerging AI trend with significant market impact.', 
+            index
+          ),
           title: trend.title || `AI Trend ${index + 1}`,
           summary: trend.summary || 'Emerging AI trend with significant market impact.',
           category: validateCategory(trend.category),

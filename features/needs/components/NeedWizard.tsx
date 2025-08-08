@@ -173,23 +173,13 @@ export function NeedWizard({ selectedTrendId, onComplete, onCancel }: NeedWizard
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">
-            Need Discovery Wizard
-          </h1>
-          <button
-            onClick={handleCancel}
-            className="text-gray-500 hover:text-gray-700 text-sm"
-          >
-            Cancel
-          </button>
-        </div>
-        
+    <div className="max-w-4xl mx-auto">
+      {/* Wizard Progress Section */}
+      <div className="mb-8">        
         {selectedTrendId && (
-          <SelectedTrendDisplay trendId={selectedTrendId} />
+          <div className="mb-6">
+            <SelectedTrendDisplay trendId={selectedTrendId} />
+          </div>
         )}
 
         {/* Progress Bar */}
