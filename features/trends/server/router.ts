@@ -163,4 +163,131 @@ export const trendsRouter = router({
         });
       }
     }),
+
+  testGeneration: publicProcedure
+    .input(
+      z.object({
+        settings: z.object({
+          userPrompt: z.object({
+            trendFocus: z.string(),
+            industryContext: z.string(),
+            timeframeContext: z.string(),
+            sourcePreferences: z.string(),
+          }),
+          systemPrompt: z.object({
+            responseFormat: z.string(),
+            validationRules: z.string(),
+            categoryRequirements: z.string(),
+            urlValidationRules: z.string(),
+          }),
+          modelSettings: z.object({
+            temperature: z.number(),
+            maxTokens: z.number(),
+          }),
+          urlVerification: z.object({
+            enabled: z.boolean(),
+            timeout: z.number(),
+            fallbackToGenerated: z.boolean(),
+          }),
+        }),
+        trendCount: z.number().min(5).max(20),
+      })
+    )
+    .mutation(async ({ input }) => {
+      try {
+        const { openai } = await import('@/lib/ai/openai');
+        const { buildTrendGenerationPrompt } = await import('../utils/settings-loader');
+        
+        // Build prompts using the provided settings
+        const currentDate = new Date();
+        const currentMonth = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        
+        const systemMessage = 'You are a market intelligence analyst with deep knowledge of current AI and technology trends. Generate realistic, current trends based on actual market conditions. Always return valid JSON.';
+        
+        const trendsPerCategory = Math.ceil(input.trendCount / 4); // Distribute evenly across 4 categories
+        
+        const userPrompt = buildTrendGenerationPrompt(
+          input.settings,
+          currentMonth,
+          input.trendCount,
+          trendsPerCategory,
+          undefined // no company profile for test
+        );
+
+        // Call OpenAI with the custom settings
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: systemMessage
+            },
+            {
+              role: 'user',
+              content: userPrompt
+            }
+          ],
+          temperature: input.settings.modelSettings.temperature,
+          max_tokens: input.settings.modelSettings.maxTokens,
+          response_format: { type: 'json_object' }
+        });
+
+        const response = completion.choices[0]?.message?.content;
+        if (!response) {
+          throw new Error('No response from OpenAI');
+        }
+
+        // Parse the response - handle both array and object with array property
+        let trendsData: any[];
+        const parsed = JSON.parse(response);
+        
+        if (Array.isArray(parsed)) {
+          trendsData = parsed;
+        } else if (parsed.trends && Array.isArray(parsed.trends)) {
+          trendsData = parsed.trends;
+        } else {
+          throw new Error('Invalid response format from AI');
+        }
+
+        // Transform to proper trend objects (simplified version for testing)
+        const trends = trendsData.slice(0, input.trendCount).map((trend, index) => ({
+          id: `test_trend_${Date.now()}_${index}`,
+          title: trend.title || `AI Trend ${index + 1}`,
+          summary: trend.summary || 'Emerging AI trend with significant market impact.',
+          category: trend.category || 'consumer',
+          impact_score: Math.min(10, Math.max(1, trend.impact_score || 7)),
+          source: trend.source || 'Industry Analysis',
+          source_url: trend.source_url || undefined,
+          created_at: new Date(currentDate.getTime() - (index * 24 * 60 * 60 * 1000)),
+          updated_at: new Date(),
+        }));
+
+        return {
+          success: true,
+          trends,
+          message: `Generated ${trends.length} test trends successfully`,
+        };
+      } catch (error) {
+        console.error('Test generation failed:', error);
+        
+        let errorMessage = 'Failed to generate test trends';
+        
+        if (error instanceof Error) {
+          if (error.message.includes('API key')) {
+            errorMessage = 'OpenAI API key is not configured. Please set OPENAI_API_KEY in your environment variables.';
+          } else if (error.message.includes('rate limit')) {
+            errorMessage = 'Rate limit exceeded. Please wait a few minutes before trying again.';
+          } else if (error.message.includes('network') || error.message.includes('fetch')) {
+            errorMessage = 'Network error. Please check your internet connection and try again.';
+          } else if (error.message.includes('JSON')) {
+            errorMessage = 'AI returned invalid JSON. Try adjusting your prompt settings and try again.';
+          }
+        }
+        
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: errorMessage,
+        });
+      }
+    }),
 });

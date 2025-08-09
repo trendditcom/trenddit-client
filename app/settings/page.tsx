@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { TrendPromptSettings, DEFAULT_TREND_SETTINGS, SettingsState } from '@/features/trends/types/settings';
 import { buildTrendGenerationPrompt } from '@/features/trends/utils/settings-loader';
-import { openai } from '@/lib/ai/openai';
+import { trpc } from '@/lib/trpc/client';
 
 interface TestTrend {
   title: string;
@@ -55,6 +55,7 @@ export default function SettingsPage() {
     error?: string;
     timestamp?: Date;
   } | null>(null);
+  const [trendCount, setTrendCount] = useState(20);
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -163,49 +164,20 @@ export default function SettingsPage() {
     return { systemMessage, userPrompt };
   };
 
+  const testGenerationMutation = trpc.trends.testGeneration.useMutation();
+
   const handleTestGeneration = async () => {
     setIsGenerating(true);
     setTestResult(null);
 
     try {
-      const { systemMessage, userPrompt } = generatePreviewPrompts();
-
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: systemMessage
-          },
-          {
-            role: 'user',
-            content: userPrompt
-          }
-        ],
-        temperature: settings.modelSettings.temperature,
-        max_tokens: settings.modelSettings.maxTokens,
-        response_format: { type: 'json_object' }
+      const result = await testGenerationMutation.mutateAsync({
+        settings,
+        trendCount
       });
 
-      const response = completion.choices[0]?.message?.content;
-      if (!response) {
-        throw new Error('No response from OpenAI');
-      }
-
-      // Parse the response - handle both array and object with array property
-      let trendsData: TestTrend[];
-      const parsed = JSON.parse(response);
-      
-      if (Array.isArray(parsed)) {
-        trendsData = parsed;
-      } else if (parsed.trends && Array.isArray(parsed.trends)) {
-        trendsData = parsed.trends;
-      } else {
-        throw new Error('Invalid response format from AI');
-      }
-
       setTestResult({
-        trends: trendsData,
+        trends: result.trends,
         timestamp: new Date()
       });
 
@@ -214,16 +186,9 @@ export default function SettingsPage() {
       
       let errorMessage = 'Failed to generate test trends. Please try again.';
       
-      if (error instanceof Error) {
-        if (error.message.includes('API key')) {
-          errorMessage = 'OpenAI API key is not configured. Please set OPENAI_API_KEY in your environment variables.';
-        } else if (error.message.includes('rate limit')) {
-          errorMessage = 'Rate limit exceeded. Please wait a few minutes before trying again.';
-        } else if (error.message.includes('network') || error.message.includes('fetch')) {
-          errorMessage = 'Network error. Please check your internet connection and try again.';
-        } else if (error.message.includes('JSON')) {
-          errorMessage = 'AI returned invalid JSON. Try adjusting your prompt settings and try again.';
-        }
+      // Extract error message from tRPC error
+      if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = error.message as string;
       }
 
       setTestResult({
@@ -742,7 +707,7 @@ export default function SettingsPage() {
                           Generate Test Trends
                         </h3>
                         <p className="text-sm text-gray-600 mt-1">
-                          Click to generate {20} trends using your current settings
+                          Click to generate {trendCount} trends using your current settings
                         </p>
                       </div>
                       <Button
@@ -764,10 +729,41 @@ export default function SettingsPage() {
                       </Button>
                     </div>
 
+                    {/* Trend Count Configuration */}
+                    <div className="border border-gray-200 rounded-lg p-4">
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-900 mb-3 block">
+                            Number of Trends to Generate: {trendCount}
+                          </Label>
+                          <div className="px-3">
+                            <Slider
+                              value={[trendCount]}
+                              onValueChange={([value]) => setTrendCount(value)}
+                              max={20}
+                              min={5}
+                              step={5}
+                              className="w-full"
+                            />
+                            <div className="flex justify-between text-xs text-gray-500 mt-1">
+                              <span>5</span>
+                              <span>10</span>
+                              <span>15</span>
+                              <span>20</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Current Settings Summary */}
                     <div className="bg-gray-50 rounded-lg p-4 border">
                       <div className="text-sm font-medium text-gray-900 mb-2">Current Test Configuration:</div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+                        <div>
+                          <span className="text-gray-600">Trends:</span>
+                          <div className="font-medium">{trendCount}</div>
+                        </div>
                         <div>
                           <span className="text-gray-600">Model:</span>
                           <div className="font-medium">gpt-4o-mini</div>
