@@ -219,7 +219,7 @@ Return as JSON array with this structure:
   }
 ]
 
-IMPORTANT: Each source_url must be a realistic, specific article URL that matches the headline and would actually exist for this story. The URL should follow the publication's typical URL structure and include relevant dates/slugs.`;
+IMPORTANT: Each source_url must be a valid, specific URL that would actually exist for the source of the trend.`;
 
   return prompt;
 }
