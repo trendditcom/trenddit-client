@@ -54,9 +54,9 @@ export const DEFAULT_TREND_SETTINGS: TrendPromptSettings = {
     urlValidationRules: "URLs must be real, accessible article links - not homepages, category pages, or generated placeholders. Verify URL accessibility before including."
   },
   urlVerification: {
-    enabled: true,
-    timeout: 5000,
-    fallbackToGenerated: false
+    enabled: false,        // ⚡ DISABLED for blazing speed
+    timeout: 2000,         // Reduced timeout when needed
+    fallbackToGenerated: true
   },
   modelSettings: {
     temperature: 0.7,

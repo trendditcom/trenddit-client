@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/lib/ui/button';
 import { Input } from '@/lib/ui/input';
 import { TrendFilters } from '@/features/trends';
-import { TrendCategory } from '@/features/trends';
-import { EnhancedTrendGrid } from '@/features/trends/components/EnhancedTrendGrid';
+import { TrendCategory, Trend } from '@/features/trends';
+import { SimpleTrendGrid } from '@/features/trends/components/simple-trend-grid';
+import { useFastTrends } from '@/features/trends/hooks/use-fast-trends';
 import { TrendRowView } from '@/features/trends/components/TrendRowView';
 import { TrendPersonalization, type PersonalizationProfile } from '@/features/trends/components/TrendPersonalization';
 import { trpc } from '@/lib/trpc/client';
@@ -36,7 +37,7 @@ export default function TrendsPage() {
   const router = useRouter();
   
   // View and UI state
-  const [selectedCategory, setSelectedCategory] = useState<TrendCategory | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<TrendCategory | 'all'>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -63,76 +64,31 @@ export default function TrendsPage() {
   // Feature flags
   const exportEnabled = useFeatureFlag('trends.export');
 
-  // Try to get initial data from localStorage
-  const getInitialTrends = () => {
-    try {
-      if (typeof window !== 'undefined') {
-        const cached = localStorage.getItem('trenddit_master_trends_cache');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          const isValid = parsed.timestamp && (Date.now() - parsed.timestamp) < (60 * 60 * 1000); // 1 hour
-          if (isValid && parsed.trends && parsed.trends.length > 0) {
-            return parsed.trends;
-          }
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to load cached trends:', error);
-    }
-    return undefined;
-  };
-
-  // API queries and mutations - always fetch mixed dataset for client-side filtering
-  const { data: allTrends, isLoading, error } = trpc.trends.list.useQuery({
-    limit: 20, // Always get mixed dataset of 20 trends
-  }, {
-    staleTime: 60 * 60 * 1000, // 1 hour - trends stay fresh for longer
-    gcTime: 24 * 60 * 60 * 1000, // 24 hours - keep in cache much longer
-    enabled: true, // Always enabled
-    refetchOnWindowFocus: false, // Don't refetch when window gains focus
-    refetchOnReconnect: false, // Don't refetch on reconnect
-    initialData: getInitialTrends(), // Use cached data as initial data
+  // Fast trends hook - provides instant cache + fresh generation
+  const fastTrends = useFastTrends({
+    category: selectedCategory === 'all' ? undefined : selectedCategory,
+    limit: 20,
+    autoStart: true,
   });
-
-  // Cache trends in localStorage when they're fetched
-  React.useEffect(() => {
-    if (allTrends && allTrends.length > 0) {
-      try {
-        // Cache in localStorage directly without importing server dependencies
-        const cacheData = { trends: allTrends, timestamp: Date.now() };
-        localStorage.setItem('trenddit_master_trends_cache', JSON.stringify(cacheData));
-      } catch (error) {
-        console.warn('Failed to cache trends:', error);
-      }
-    }
-  }, [allTrends]);
 
   const exportMutation = trpc.trends.export.useMutation();
   const regenerateTrendsMutation = trpc.trends.regenerateForProfile.useMutation({
     onSuccess: () => {
-      // Force a hard refresh by clearing React Query cache and refetching
-      utils.trends.list.invalidate();
-      // Also force refetch immediately
-      utils.trends.list.refetch();
+      // Force refresh using fast trends hook
+      fastTrends.refresh();
     },
     onError: (error) => {
       console.error('Failed to regenerate personalized trends:', error);
     },
   });
 
-  const utils = trpc.useUtils();
 
 
-  // Client-side filtering - apply category and search filters to master dataset
+  // Client-side filtering - apply search filters (category is handled by hook)
   const filteredTrends = React.useMemo(() => {
-    if (!allTrends) return [];
+    if (!fastTrends.trends) return [];
     
-    let filtered = allTrends;
-    
-    // Apply category filter
-    if (selectedCategory) {
-      filtered = filtered.filter(trend => trend.category === selectedCategory);
-    }
+    let filtered = fastTrends.trends;
     
     // Apply search filter
     if (searchQuery) {
@@ -143,13 +99,13 @@ export default function TrendsPage() {
     }
     
     return filtered;
-  }, [allTrends, selectedCategory, searchQuery]);
+  }, [fastTrends.trends, searchQuery]);
 
 
 
   const handleExport = () => {
-    if (!exportEnabled || !allTrends) return;
-    const trendIds = allTrends.map((t) => t.id);
+    if (!exportEnabled || !fastTrends.trends) return;
+    const trendIds = fastTrends.trends.map((t) => t.id);
     exportMutation.mutate({ format: 'pdf', trendIds });
   };
 
@@ -158,6 +114,10 @@ export default function TrendsPage() {
     // The personalization profile will be automatically loaded from localStorage
     // by the CompanyProfileStep component, so we just need to pass the trendId
     router.push(`/needs?trendId=${trendId}`);
+  };
+
+  const handleTrendSelect = (trend: Trend) => {
+    handleGenerateNeeds(trend.id);
   };
 
   const handleGeneratePersonalizedTrends = (profile: PersonalizationProfile) => {
@@ -228,7 +188,7 @@ export default function TrendsPage() {
                 </div>
 
 
-                {exportEnabled && isHydrated && allTrends && allTrends.length > 0 && (
+                {exportEnabled && isHydrated && fastTrends.trends && fastTrends.trends.length > 0 && (
                   <Button
                     variant="outline"
                     onClick={handleExport}
@@ -271,8 +231,8 @@ export default function TrendsPage() {
               <div className="flex items-center gap-4 flex-wrap">
                 <div className="flex-shrink-0">
                   <TrendFilters
-                    selectedCategory={selectedCategory}
-                    onCategoryChange={setSelectedCategory}
+                    selectedCategory={selectedCategory === 'all' ? null : selectedCategory}
+                    onCategoryChange={(category) => setSelectedCategory(category || 'all')}
                   />
                 </div>
                 <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -288,10 +248,10 @@ export default function TrendsPage() {
             </div>
 
             {/* Error Display */}
-            {error && (
+            {fastTrends.error && (
               <ErrorDisplay 
-                error={error} 
-                onRetry={() => utils.trends.list.invalidate()}
+                error={fastTrends.error} 
+                onRetry={() => fastTrends.refresh()}
               />
             )}
 
@@ -316,7 +276,7 @@ export default function TrendsPage() {
                 </div>
               </div>
 
-              {!isHydrated || isLoading ? (
+              {!isHydrated ? (
                 <>
                   <ProgressLoader message="Loading market trends..." />
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -326,10 +286,15 @@ export default function TrendsPage() {
                   </div>
                 </>
               ) : viewMode === 'cards' ? (
-                <EnhancedTrendGrid
+                <SimpleTrendGrid
                   trends={filteredTrends}
-                  companyProfile={companyProfile}
-                  onGenerateNeeds={handleGenerateNeeds}
+                  selectedCategory={selectedCategory}
+                  isLoading={fastTrends.isLoading}
+                  isComplete={fastTrends.isComplete}
+                  hasCache={fastTrends.hasCache}
+                  onRefresh={fastTrends.refresh}
+                  onTrendSelect={handleTrendSelect}
+                  error={fastTrends.error}
                 />
               ) : (
                 <TrendRowView

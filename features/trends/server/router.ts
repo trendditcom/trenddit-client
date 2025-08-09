@@ -5,6 +5,9 @@ import { TrendCategorySchema, WebSearchCitation } from '../types/trend';
 import { generateDynamicTrends, getDynamicTrendById } from './trend-generator';
 import { getTrends, getTrendById } from '../services/trend-service';
 import { events, EVENTS } from '@/lib/events';
+import { streamingGenerator, TrendBatch, BatchProgress } from './batch-generator';
+import { trendCache } from '../services/trend-cache';
+import { observable } from '@trpc/server/observable';
 
 /**
  * Extract web search citations from OpenAI Responses API response
@@ -42,6 +45,115 @@ function extractWebSearchCitations(response: any): WebSearchCitation[] {
 }
 
 export const trendsRouter = router({
+  // Instant trends - returns cached data immediately (0ms perceived load)
+  instant: publicProcedure
+    .input(
+      z.object({
+        category: TrendCategorySchema.optional(),
+        limit: z.number().min(5).max(50).default(20),
+      })
+    )
+    .query(async ({ input }) => {
+      const { category, limit } = input;
+      
+      // Try to get instant cached trends
+      const cachedTrends = trendCache.getInstantTrends(category, limit);
+      
+      if (cachedTrends && cachedTrends.length > 0) {
+        // Return cached trends immediately
+        return {
+          trends: cachedTrends,
+          source: 'cache',
+          cached: true,
+          shouldRefresh: trendCache.shouldRefresh(category)
+        };
+      }
+      
+      // No cache available - client should use streaming endpoint
+      return {
+        trends: [],
+        source: 'none',
+        cached: false,
+        shouldRefresh: true
+      };
+    }),
+
+  // Streaming trends generation with progress updates
+  streamGenerate: publicProcedure
+    .input(
+      z.object({
+        category: TrendCategorySchema.optional(),
+        limit: z.number().min(5).max(50).default(20),
+        companyProfile: z.object({
+          industry: z.string(),
+          market: z.string().optional(),
+          businessSize: z.string().optional(),
+        }).optional(),
+      })
+    )
+    .subscription(({ input }) => {
+      return observable<{ 
+        type: 'batch' | 'progress' | 'complete' | 'error'; 
+        data: TrendBatch | BatchProgress | { totalTrends: number } | { error: string }; 
+      }>((emit) => {
+        const { limit, companyProfile } = input;
+        
+        // Start streaming generation
+        (async () => {
+          try {
+            const generator = streamingGenerator.generateTrendBatches(
+              limit,
+              companyProfile,
+              (progress) => {
+                // Emit progress updates
+                emit.next({
+                  type: 'progress',
+                  data: progress
+                });
+              }
+            );
+            
+            const allTrends: any[] = [];
+            
+            // Process each batch as it arrives
+            for await (const batch of generator) {
+              // Emit batch immediately
+              emit.next({
+                type: 'batch',
+                data: batch
+              });
+              
+              // Collect trends for caching
+              if (!batch.error) {
+                allTrends.push(...batch.trends);
+              }
+            }
+            
+            // Cache all generated trends
+            if (allTrends.length > 0) {
+              trendCache.cacheTrends(allTrends, input.category);
+            }
+            
+            // Signal completion
+            emit.next({
+              type: 'complete',
+              data: { totalTrends: allTrends.length }
+            });
+            
+            emit.complete();
+            
+          } catch (error) {
+            console.error('Streaming generation failed:', error);
+            emit.next({
+              type: 'error',
+              data: { error: error instanceof Error ? error.message : 'Generation failed' }
+            });
+            emit.error(error);
+          }
+        })();
+      });
+    }),
+
   list: publicProcedure
     .input(
       z.object({
