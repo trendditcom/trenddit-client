@@ -197,12 +197,13 @@ export const trendsRouter = router({
       try {
         const { openai } = await import('@/lib/ai/openai');
         const { buildTrendGenerationPrompt } = await import('../utils/settings-loader');
+        const { serverConfig } = await import('@/lib/config/server');
         
         // Build prompts using the provided settings
         const currentDate = new Date();
         const currentMonth = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
         
-        const systemMessage = 'You are a market intelligence analyst with deep knowledge of current AI and technology trends. Generate realistic, current trends based on actual market conditions. Always return valid JSON.';
+        const systemMessage = serverConfig.ai.systemPrompt;
         
         const trendsPerCategory = Math.ceil(input.trendCount / 4); // Distribute evenly across 4 categories
         

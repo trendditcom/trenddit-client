@@ -9,6 +9,7 @@ import { Trend, TrendCategory } from '../types/trend';
 import { loadTrendSettings, buildTrendGenerationPrompt, getAIModelFromSettings } from '../utils/settings-loader';
 import { verifyUrl, isValidArticleUrl } from '../utils/url-verification';
 import { TrendPromptSettings } from '../types/settings';
+import { serverConfig } from '@/lib/config/server';
 
 interface CompanyProfile {
   industry: string;
@@ -59,7 +60,7 @@ export async function generateDynamicTrends(
       messages: [
         {
           role: 'system',
-          content: 'You are a market intelligence analyst with deep knowledge of current AI and technology trends. Generate realistic, current trends based on actual market conditions. Always return valid JSON.'
+          content: serverConfig.ai.systemPrompt
         },
         {
           role: 'user',

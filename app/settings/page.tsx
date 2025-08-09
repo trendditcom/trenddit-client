@@ -30,6 +30,7 @@ import {
 import { TrendPromptSettings, DEFAULT_TREND_SETTINGS, SettingsState } from '@/features/trends/types/settings';
 import { buildTrendGenerationPrompt } from '@/features/trends/utils/settings-loader';
 import { trpc } from '@/lib/trpc/client';
+import { CONFIG_CONSTANTS } from '@/lib/config/constants';
 
 interface TestTrend {
   title: string;
@@ -151,7 +152,8 @@ export default function SettingsPage() {
     const currentDate = new Date();
     const currentMonth = currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     
-    const systemMessage = 'You are a market intelligence analyst with deep knowledge of current AI and technology trends. Generate realistic, current trends based on actual market conditions. Always return valid JSON.';
+    // Use the system prompt from shared constants (synced with config.yml)
+    const systemMessage = CONFIG_CONSTANTS.ai.systemPrompt;
     
     const userPrompt = buildTrendGenerationPrompt(
       settings,

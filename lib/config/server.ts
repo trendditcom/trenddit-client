@@ -13,6 +13,7 @@ export interface ServerConfig {
     model: string;
     temperature: number;
     max_tokens: number;
+    systemPrompt: string;
     retry: {
       max_attempts: number;
       initial_delay: number;
@@ -158,6 +159,7 @@ function getDefaultServerConfig(): ServerConfig {
       model: 'gpt-4o-mini',
       temperature: 0.7,
       max_tokens: 3000,
+      systemPrompt: 'You are a market intelligence analyst with deep knowledge of current AI and technology trends. Curate current trends from authoritative sources. Always return valid JSON.',
       retry: {
         max_attempts: 3,
         initial_delay: 1000,
