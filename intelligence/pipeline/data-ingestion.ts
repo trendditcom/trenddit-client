@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { openai } from '@/lib/ai/openai';
+import { anthropic } from '@/lib/ai/anthropic';
 import { getAIModel } from '@/lib/config/reader';
 
 // Data Source Types
@@ -325,27 +325,33 @@ Respond in JSON format:
   "confidence": 0.85
 }`;
 
-      const response = await openai.chat.completions.create({
-        model: getAIModel(),
+      const response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        temperature: 0.2,
+        system: 'You are an expert intelligence analyst specializing in technology and market trends. Analyze data comprehensively and objectively. Use web search to verify and supplement information when needed.',
         messages: [
-          {
-            role: 'system',
-            content: 'You are an expert intelligence analyst specializing in technology and market trends. Analyze data comprehensively and objectively.'
-          },
           {
             role: 'user',
             content: analysisPrompt
           }
         ],
-        temperature: 0.2,
-        max_tokens: 1500,
+        tools: [
+          {
+            type: 'web_search_20250305',
+            name: 'web_search',
+            max_uses: 2
+            // Unrestricted for comprehensive data ingestion
+          }
+        ]
       });
 
       // Parse AI response with intelligent fallbacks
       let aiAnalysis;
       try {
-        const content = response.choices[0].message.content || '{}';
-        aiAnalysis = JSON.parse(content);
+        const content = response.content[0];
+        const responseText = content && content.type === 'text' ? content.text : '{}';
+        aiAnalysis = JSON.parse(responseText);
       } catch (parseError) {
         console.error('Failed to parse AI analysis, using fallback:', parseError);
         aiAnalysis = this.generateFallbackAnalysis(raw);

@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { openai } from '@/lib/ai/openai';
+import { anthropic } from '@/lib/ai/anthropic';
 import { getAIModel } from '@/lib/config/reader';
 import { 
   IntelligenceAgent,
@@ -452,33 +452,43 @@ Respond in JSON format:
 
   private async performChainOfThoughtAnalysis(prompt: string): Promise<string> {
     try {
-      // Check for OpenAI API key in environment variables (project env first, then user env)
-      const apiKey = process.env.OPENAI_API_KEY;
+      // Check for Anthropic API key in environment variables (project env first, then user env)
+      const apiKey = process.env.ANTHROPIC_API_KEY;
       
-      if (!apiKey || apiKey === 'your-actual-openai-api-key' || apiKey.startsWith('sk-your-') || apiKey.startsWith('your-')) {
-        throw new Error('OpenAI API key not configured. Please set OPENAI_API_KEY in .env.local or as a user environment variable. Get your API key from https://platform.openai.com/api-keys');
+      if (!apiKey || apiKey === 'your-actual-anthropic-api-key' || apiKey.startsWith('sk-ant-') === false) {
+        throw new Error('Anthropic API key not configured. Please set ANTHROPIC_API_KEY in .env.local or as a user environment variable. Get your API key from https://console.anthropic.com/settings/keys');
       }
 
-      const response = await openai.chat.completions.create({
-        model: getAIModel(),
-        messages: [
-          {
-            role: 'system',
-            content: `You are a senior market intelligence analyst with expertise in AI and technology trends. 
+      const response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        temperature: 0.3,
+        system: `You are a senior market intelligence analyst with expertise in AI and technology trends. 
             Use systematic reasoning and provide transparent, step-by-step analysis.
             Always include confidence levels and supporting evidence.
-            Think step by step and show your reasoning process clearly.`
-          },
+            Think step by step and show your reasoning process clearly.
+            You have access to web search to find current market information.`,
+        messages: [
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.3,
-        max_tokens: 2000,
+        tools: [
+          {
+            type: 'web_search_20250305',
+            name: 'web_search',
+            max_uses: 3
+            // Unrestricted for comprehensive market intelligence
+          }
+        ]
       });
 
-      return response.choices[0].message.content || 'Analysis failed';
+      const content = response.content[0];
+      if (!content || content.type !== 'text') {
+        throw new Error('No text response from Anthropic');
+      }
+      return content.text;
     } catch (error) {
       console.error('Chain-of-thought analysis failed:', error);
       // Throw the actual error instead of returning fallback data

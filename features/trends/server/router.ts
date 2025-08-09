@@ -1,10 +1,45 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { publicProcedure, protectedProcedure, router } from '@/server/trpc';
-import { TrendCategorySchema } from '../types/trend';
+import { TrendCategorySchema, WebSearchCitation } from '../types/trend';
 import { generateDynamicTrends, getDynamicTrendById } from './trend-generator';
 import { getTrends, getTrendById } from '../services/trend-service';
 import { events, EVENTS } from '@/lib/events';
+
+/**
+ * Extract web search citations from OpenAI Responses API response
+ */
+function extractWebSearchCitations(response: any): WebSearchCitation[] {
+  const citations: WebSearchCitation[] = [];
+  
+  try {
+    // Check if response has output items with annotations
+    if (response.output && Array.isArray(response.output)) {
+      for (const item of response.output) {
+        if (item.type === 'message' && item.content && Array.isArray(item.content)) {
+          for (const content of item.content) {
+            if (content.type === 'output_text' && content.annotations && Array.isArray(content.annotations)) {
+              for (const annotation of content.annotations) {
+                if (annotation.type === 'url_citation') {
+                  citations.push({
+                    url: annotation.url,
+                    title: annotation.title || 'Web Search Result',
+                    start_index: annotation.start_index,
+                    end_index: annotation.end_index,
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to extract web search citations:', error);
+  }
+  
+  return citations;
+}
 
 export const trendsRouter = router({
   list: publicProcedure
@@ -195,7 +230,7 @@ export const trendsRouter = router({
     )
     .mutation(async ({ input }) => {
       try {
-        const { openai } = await import('@/lib/ai/openai');
+        const { anthropic } = await import('@/lib/ai/anthropic');
         const { buildTrendGenerationPrompt } = await import('../utils/settings-loader');
         const { serverConfig } = await import('@/lib/config/server');
         
@@ -215,32 +250,45 @@ export const trendsRouter = router({
           undefined // no company profile for test
         );
 
-        // Call OpenAI with the custom settings
-        const completion = await openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+        // Call Anthropic using messages API with web search
+        const response = await anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 4000,
+          temperature: 0.7,
+          system: `${systemMessage}\n\nYou have access to web search. Use it to find current AI and technology trends. You must always return valid JSON as your response.`,
           messages: [
             {
-              role: 'system',
-              content: systemMessage
-            },
-            {
               role: 'user',
-              content: userPrompt
+              content: `${userPrompt}\n\nIMPORTANT: Search the web for current AI and technology trends. Generate realistic, current trends based on your web search findings and return as valid JSON.`
             }
           ],
-          temperature: input.settings.modelSettings.temperature,
-          max_tokens: input.settings.modelSettings.maxTokens,
-          response_format: { type: 'json_object' }
+          tools: [{
+            type: 'web_search_20250305',
+            name: 'web_search',
+            max_uses: 5
+            // Unrestricted domains for broader access to current tech news
+          }]
         });
 
-        const response = completion.choices[0]?.message?.content;
-        if (!response) {
-          throw new Error('No response from OpenAI');
+        // Extract text content from Claude's response (may have multiple content blocks)
+        let responseText = '';
+        for (const content of response.content) {
+          if (content.type === 'text') {
+            responseText += content.text;
+          }
         }
+        
+        if (!responseText) {
+          throw new Error('No text response from Anthropic API');
+        }
+        
+        // Extract JSON from the response text
+        const jsonMatch = responseText.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+        const jsonContent = jsonMatch ? jsonMatch[0] : responseText;
 
         // Parse the response - handle both array and object with array property
         let trendsData: any[];
-        const parsed = JSON.parse(response);
+        const parsed = JSON.parse(jsonContent);
         
         if (Array.isArray(parsed)) {
           trendsData = parsed;
@@ -250,6 +298,9 @@ export const trendsRouter = router({
           throw new Error('Invalid response format from AI');
         }
 
+        // Extract web search citations
+        const citations = extractWebSearchCitations(response);
+        
         // Transform to proper trend objects (simplified version for testing)
         const trends = trendsData.slice(0, input.trendCount).map((trend, index) => ({
           id: `test_trend_${Date.now()}_${index}`,
@@ -259,6 +310,7 @@ export const trendsRouter = router({
           impact_score: Math.min(10, Math.max(1, trend.impact_score || 7)),
           source: trend.source || 'Industry Analysis',
           source_url: trend.source_url || undefined,
+          web_search_citations: citations,
           created_at: new Date(currentDate.getTime() - (index * 24 * 60 * 60 * 1000)),
           updated_at: new Date(),
         }));
@@ -275,7 +327,7 @@ export const trendsRouter = router({
         
         if (error instanceof Error) {
           if (error.message.includes('API key')) {
-            errorMessage = 'OpenAI API key is not configured. Please set OPENAI_API_KEY in your environment variables.';
+            errorMessage = 'Anthropic API key is not configured. Please set ANTHROPIC_API_KEY in your environment variables.';
           } else if (error.message.includes('rate limit')) {
             errorMessage = 'Rate limit exceeded. Please wait a few minutes before trying again.';
           } else if (error.message.includes('network') || error.message.includes('fetch')) {

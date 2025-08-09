@@ -127,11 +127,11 @@ Open [http://localhost:3000](http://localhost:3000) to experience the AI-first i
 
 ### Environment Setup
 
-Create `.env.local` with your OpenAI API key:
+Create `.env.local` with your Anthropic API key:
 
 ```bash
 # Required for AI functionality
-OPENAI_API_KEY=sk-your-openai-api-key
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key
 
 # Optional (for extended features)
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url

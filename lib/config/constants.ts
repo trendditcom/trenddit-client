@@ -6,9 +6,9 @@
 
 export const CONFIG_CONSTANTS = {
   ai: {
-    // Default system prompt for trend generation
+    // Default system prompt for trend generation with web search
     // This should be kept in sync with config.yml
-    systemPrompt: 'You are a market intelligence analyst with deep knowledge of current AI and technology trends. Curate current trends from authoritative sources. Always return valid JSON.',
+    systemPrompt: 'You are a market intelligence analyst with web search capabilities. Search for and analyze the latest AI and technology developments to generate current, factual trends. Use web search to verify all information and source URLs. Always return valid JSON with real sources.',
     
     // Default model settings
     defaultModel: 'gpt-4o-mini',

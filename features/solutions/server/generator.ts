@@ -1,4 +1,4 @@
-import { openai } from '@/lib/ai/openai'
+import { anthropic } from '@/lib/ai/anthropic'
 import { getAIModel } from '@/lib/config/reader'
 import { serverConfig } from '@/lib/config/server'
 import type { 
@@ -116,27 +116,32 @@ ${companyContext.challenges && companyContext.challenges.length > 0 ? `- Each so
 ${companyContext.goals && companyContext.goals.length > 0 ? `- Each solution should advance these goals: ${companyContext.goals.join(', ')}` : ''}`
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 3000,
+      temperature: 0.3,
+      system: 'You are an expert enterprise solution architect with current knowledge of technology vendors, market rates, and implementation approaches. You have web search access to find the latest vendor information and pricing. Always return valid JSON with realistic, actionable solutions.',
       messages: [
-        {
-          role: 'system',
-          content: 'You are an expert enterprise solution architect with current knowledge of technology vendors, market rates, and implementation approaches. Always return valid JSON with realistic, actionable solutions.'
-        },
         {
           role: 'user',
           content: prompt
         }
       ],
-      model: getAIModel(),
-      temperature: 0.3,
-      max_tokens: 3000,
-      response_format: { type: 'json_object' }
+      tools: [
+        {
+          type: 'web_search_20250305',
+          name: 'web_search',
+          max_uses: 3
+          // Unrestricted for broader access to solution information
+        }
+      ]
     })
 
-    const response = completion.choices[0]?.message?.content
-    if (!response) {
-      throw new Error('No response from OpenAI')
+    const content = completion.content[0]
+    if (!content || content.type !== 'text') {
+      throw new Error('No text response from Anthropic')
     }
+    const response = content.text
 
     const parsed = JSON.parse(response)
     const solutions = parsed.solutions || []

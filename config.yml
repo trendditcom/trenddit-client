@@ -7,14 +7,14 @@ app:
 
 # AI/LLM Configuration
 ai:
-  provider: "openai"
-  model: "gpt-4o-mini"
-  temperature: 0.7
-  max_tokens: 3000
+  provider: "anthropic"
+  model: "claude-sonnet-4-20250514"
+  temperature: 0.3
+  max_tokens: 4000
   
-  # System prompt for trend generation
-  # This defines the AI's role and behavior when generating trends
-  systemPrompt: "You are a market intelligence analyst with deep knowledge of current AI and technology trends. Curate current trends from authoritative sources. Always return valid JSON."
+  # System prompt for trend generation with web search
+  # This defines the AI's role and behavior when generating current trends using web search
+  systemPrompt: "You are a market intelligence analyst with web search capabilities. Search for and analyze the latest AI and technology developments to generate current, factual trends. Use web search to verify all information and source URLs. Always return valid JSON with real sources."
   
   # Retry configuration
   retry:

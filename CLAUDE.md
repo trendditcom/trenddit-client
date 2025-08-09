@@ -223,7 +223,7 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
 # AI
-OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
 
 # Auth
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
@@ -237,19 +237,19 @@ NEXT_PUBLIC_POSTHOG_HOST=
 NEXT_PUBLIC_FEATURE_FLAGS_ENABLED=true
 ```
 
-### OpenAI API Key Configuration
+### Anthropic API Key Configuration
 
-The system uses `OPENAI_API_KEY` from:
+The system uses `ANTHROPIC_API_KEY` from:
 1. `.env.local` file (project-specific) - preferred for development
 2. User environment variables (global) - preferred for production/deployment
 
 To set a user environment variable:
 ```bash
 # macOS/Linux
-export OPENAI_API_KEY=sk-your-actual-openai-key
+export ANTHROPIC_API_KEY=sk-ant-your-actual-anthropic-key
 
 # Windows
-set OPENAI_API_KEY=sk-your-actual-openai-key
+set ANTHROPIC_API_KEY=sk-ant-your-actual-anthropic-key
 ```
 
 ## Debugging Tips
@@ -324,7 +324,7 @@ Return top 3 matches with confidence scores.
 ### Fallback Strategy
 - **NEVER** create mock or hardcoded fallback responses
 - **ALWAYS** surface actual errors to users with clear instructions
-- **PROVIDE** actionable error messages (e.g., "Set OPENAI_API_KEY in .env.local or environment")
+- **PROVIDE** actionable error messages (e.g., "Set ANTHROPIC_API_KEY in .env.local or environment")
 - **FAIL FAST** - let users know exactly what needs to be configured
 
 ### Error Messages

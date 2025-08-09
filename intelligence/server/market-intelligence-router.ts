@@ -6,7 +6,7 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { publicProcedure, protectedProcedure, router } from '@/server/trpc';
-import { openai } from '@/lib/ai/openai';
+import { anthropic } from '@/lib/ai/anthropic';
 import { getAIModel } from '@/lib/config/reader';
 import { MarketIntelligenceAgent } from '../agents/market-intelligence/agent';
 import { multiAgentOrchestrator } from '../orchestration/coordinator';
@@ -117,29 +117,31 @@ Respond in JSON format:
   "deepDiveAreas": ["area1", "area2", "area3"]
 }`;
 
-        const conversationalAIResponse = await openai.chat.completions.create({
-          model: getAIModel(),
+        const conversationalAIResponse = await anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          temperature: 0.4,
+          system: `You are an expert AI advisor specializing in ${input.userRole} concerns. Generate contextual, role-specific conversational elements. Use web search for current information. Always respond with valid JSON only.`,
           messages: [
-            {
-              role: 'system',
-              content: `You are an expert AI advisor specializing in ${input.userRole} concerns. Generate contextual, role-specific conversational elements.`
-            },
             {
               role: 'user',
               content: conversationalPrompt
             }
           ],
-          response_format: { type: 'json_object' },
-          temperature: 0.4,
-          max_tokens: 1000,
+          tools: [{
+            type: 'web_search_20250305',
+            name: 'web_search',
+            max_uses: 2
+          }]
         });
 
         // Parse AI response
-        const conversationalContent = conversationalAIResponse.choices[0].message.content;
+        const content = conversationalAIResponse.content[0];
+        const conversationalContent = content && content.type === 'text' ? content.text : null;
         if (!conversationalContent) {
           throw new TRPCError({
             code: 'INTERNAL_SERVER_ERROR',
-            message: 'OpenAI returned empty response. Please report this issue with timestamp: ' + new Date().toISOString(),
+            message: 'Anthropic returned empty response. Please report this issue with timestamp: ' + new Date().toISOString(),
           });
         }
 
@@ -174,9 +176,9 @@ Respond in JSON format:
         errorMessage += `User Role: ${input.userRole}\n`;
         
         if (error instanceof Error && error.message.includes('API key')) {
-          errorMessage += 'Issue: OpenAI API key configuration problem\n';
-          errorMessage += 'Solution: Set OPENAI_API_KEY in .env.local or as environment variable\n';
-          errorMessage += 'Get your API key from: https://platform.openai.com/api-keys';
+          errorMessage += 'Issue: Anthropic API key configuration problem\n';
+          errorMessage += 'Solution: Set ANTHROPIC_API_KEY in .env.local or as environment variable\n';
+          errorMessage += 'Get your API key from: https://console.anthropic.com/settings/keys';
         } else if (error instanceof Error && error.message.includes('rate limit')) {
           errorMessage += 'Issue: API rate limit exceeded';
         } else if (error instanceof Error && error.message.includes('network')) {
@@ -222,20 +224,22 @@ Respond in JSON format:
   }
 }`;
 
-        const marketImpactResponse = await openai.chat.completions.create({
-          model: getAIModel(),
+        const marketImpactResponse = await anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          temperature: 0.3,
+          system: 'You are a competitive intelligence analyst. Analyze competitor activities and generate strategic market insights. Use web search for current market data. Always respond with valid JSON only.',
           messages: [
-            {
-              role: 'system',
-              content: 'You are a competitive intelligence analyst. Analyze competitor activities and generate strategic market insights.'
-            },
             {
               role: 'user',
               content: marketImpactPrompt
             }
           ],
-          temperature: 0.3,
-          max_tokens: 1000,
+          tools: [{
+            type: 'web_search_20250305',
+            name: 'web_search',
+            max_uses: 3
+          }]
         });
 
         // Parse AI response with fallback
@@ -244,7 +248,8 @@ Respond in JSON format:
         let recommendations: { immediate: string[]; strategic: string[] } = { immediate: [], strategic: [] };
 
         try {
-          const marketContent = marketImpactResponse.choices[0].message.content || '{}';
+          const marketResponseContent = marketImpactResponse.content[0];
+          const marketContent = marketResponseContent && marketResponseContent.type === 'text' ? marketResponseContent.text : '{}';
           const marketParsed = JSON.parse(marketContent);
           emergingOpportunities = marketParsed.emergingOpportunities || [];
           marketShifts = marketParsed.marketShifts || [];
@@ -388,13 +393,12 @@ Respond in JSON format:
         });
 
         // Generate real-time trending topics using AI
-        const trendingTopicsResponse = await openai.chat.completions.create({
-          model: getAIModel(),
+        const trendingTopicsResponse = await anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 800,
+          temperature: 0.3,
+          system: 'You are a market intelligence analyst. Generate current trending topics in AI and technology with mention counts, sentiment, and trend direction. Use web search to find latest trends. Always respond with valid JSON only.',
           messages: [
-            {
-              role: 'system',
-              content: 'You are a market intelligence analyst. Generate current trending topics in AI and technology with mention counts, sentiment, and trend direction.'
-            },
             {
               role: 'user',
               content: `Based on current market intelligence, identify 3 trending topics in AI and technology. Consider enterprise adoption, regulatory developments, and technical innovations.
@@ -412,18 +416,20 @@ Respond in JSON format:
 }`
             }
           ],
-          temperature: 0.3,
-          max_tokens: 800,
+          tools: [{
+            type: 'web_search_20250305',
+            name: 'web_search',
+            max_uses: 3
+          }]
         });
 
         // Generate real-time market signals using AI
-        const marketSignalsResponse = await openai.chat.completions.create({
-          model: getAIModel(),
+        const marketSignalsResponse = await anthropic.messages.create({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 800,
+          temperature: 0.3,
+          system: 'You are a senior market analyst. Generate current market signals for AI and technology trends with strength and confidence assessments. Use web search for current market data. Always respond with valid JSON only.',
           messages: [
-            {
-              role: 'system',
-              content: 'You are a senior market analyst. Generate current market signals for AI and technology trends with strength and confidence assessments.'
-            },
             {
               role: 'user',
               content: `Based on current market conditions, identify 3 key market signals for AI technology adoption. Consider enterprise demand, competitive activity, and market dynamics.
@@ -440,8 +446,11 @@ Respond in JSON format:
 }`
             }
           ],
-          temperature: 0.3,
-          max_tokens: 800,
+          tools: [{
+            type: 'web_search_20250305',
+            name: 'web_search',
+            max_uses: 3
+          }]
         });
 
         // Parse AI responses with fallbacks
@@ -449,7 +458,8 @@ Respond in JSON format:
         let marketSignals = [];
 
         try {
-          const topicsContent = trendingTopicsResponse.choices[0].message.content || '{}';
+          const topicsResponseContent = trendingTopicsResponse.content[0];
+          const topicsContent = topicsResponseContent && topicsResponseContent.type === 'text' ? topicsResponseContent.text : '{}';
           const topicsParsed = JSON.parse(topicsContent);
           trendingTopics = topicsParsed.trendingTopics || [];
         } catch (error) {
@@ -462,7 +472,8 @@ Respond in JSON format:
         }
 
         try {
-          const signalsContent = marketSignalsResponse.choices[0].message.content || '{}';
+          const signalsResponseContent = marketSignalsResponse.content[0];
+          const signalsContent = signalsResponseContent && signalsResponseContent.type === 'text' ? signalsResponseContent.text : '{}';
           const signalsParsed = JSON.parse(signalsContent);
           marketSignals = signalsParsed.marketSignals || [];
         } catch (error) {

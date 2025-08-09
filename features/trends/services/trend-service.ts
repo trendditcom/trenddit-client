@@ -32,7 +32,7 @@ export async function getTrends(category?: TrendCategory, limit: number = 20): P
     const isServer = typeof window === 'undefined';
     
     if (isServer) {
-      // On server-side, use the trend generator directly
+      // On server-side, use the trend generator directly  
       const { generateDynamicTrends } = await import('../server/trend-generator');
       
       // Generate fresh mixed dataset (always mixed, regardless of category param)

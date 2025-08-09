@@ -98,10 +98,9 @@ export default function TrendsPage() {
   React.useEffect(() => {
     if (allTrends && allTrends.length > 0) {
       try {
-        // Update service layer cache as well
-        import('@/features/trends/services/trend-service').then(({ updateTrendsCache }) => {
-          updateTrendsCache(allTrends);
-        });
+        // Cache in localStorage directly without importing server dependencies
+        const cacheData = { trends: allTrends, timestamp: Date.now() };
+        localStorage.setItem('trenddit_master_trends_cache', JSON.stringify(cacheData));
       } catch (error) {
         console.warn('Failed to cache trends:', error);
       }

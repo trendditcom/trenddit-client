@@ -83,7 +83,7 @@ npm run test:watch        # Watch mode for development
 #### Fallback Strategy
 - **NEVER** create mock or hardcoded fallback responses
 - **ALWAYS** surface actual errors to users with clear instructions
-- **PROVIDE** actionable error messages (e.g., "Set OPENAI_API_KEY in .env.local or environment")
+- **PROVIDE** actionable error messages (e.g., "Set ANTHROPIC_API_KEY in .env.local or environment")
 - **FAIL FAST** - let users know exactly what needs to be configured
 
 #### Error Messages
@@ -222,7 +222,7 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
 # AI
-OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
 
 # Auth
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=

@@ -4,12 +4,11 @@
  * Replaces static mockTrends with real-time intelligence
  */
 
-import { openai } from '@/lib/ai/openai';
-import { Trend, TrendCategory } from '../types/trend';
+import { anthropic } from '@/lib/ai/anthropic';
+import { Trend, TrendCategory, WebSearchCitation } from '../types/trend';
 import { loadTrendSettings, buildTrendGenerationPrompt, getAIModelFromSettings } from '../utils/settings-loader';
 import { verifyUrl, isValidArticleUrl } from '../utils/url-verification';
 import { TrendPromptSettings } from '../types/settings';
-import { serverConfig } from '@/lib/config/server';
 
 interface CompanyProfile {
   industry: string;
@@ -55,31 +54,69 @@ export async function generateDynamicTrends(
   );
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: getAIModelFromSettings(),
+    // Import server config only when needed (server-side only)
+    const { serverConfig } = await import('@/lib/config/server');
+    
+    // Use Anthropic's messages API with web search
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
+      temperature: 0.7,
+      system: `${serverConfig.ai.systemPrompt}\n\nYou have access to web search to find current information. Use it to research the latest AI and technology trends. Always return valid JSON as your response.`,
       messages: [
         {
-          role: 'system',
-          content: serverConfig.ai.systemPrompt
-        },
-        {
           role: 'user',
-          content: prompt
-        }
+          content: `${prompt}\n\nIMPORTANT: Search the web for current AI and technology trends to ensure all information is up-to-date and accurate. Generate realistic trends based on your web search results. Return the response as valid JSON.`,
+        },
       ],
-      temperature: settings.modelSettings.temperature,
-      max_tokens: settings.modelSettings.maxTokens,
-      response_format: { type: 'json_object' }
+      tools: [
+        {
+          type: 'web_search_20250305',
+          name: 'web_search',
+          max_uses: 5,
+          // Allow access to major tech news sources
+          // Note: Some domains may block Anthropic's crawler
+          // Leaving unrestricted for broader access to current information
+        }
+      ]
     });
 
-    const response = completion.choices[0]?.message?.content;
-    if (!response) {
-      throw new Error('No response from OpenAI');
+    // Extract content and web search citations from Claude's response
+    let responseText = '';
+    const citations: WebSearchCitation[] = [];
+    
+    // Process all content blocks to extract text and citations
+    for (const content of response.content) {
+      if (content.type === 'text') {
+        responseText += content.text;
+        
+        // Extract citations if available
+        if (content.citations) {
+          for (const citation of content.citations) {
+            if (citation.type === 'web_search_result_location') {
+              citations.push({
+                url: citation.url,
+                title: citation.title || 'Web Search Result',
+                start_index: 0, // Web search citations don't have specific indices
+                end_index: 0,
+              });
+            }
+          }
+        }
+      }
     }
+    
+    if (!responseText) {
+      throw new Error('No text response from Anthropic API');
+    }
+    
+    // Extract JSON from the response text
+    const jsonMatch = responseText.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+    const jsonContent = jsonMatch ? jsonMatch[0] : responseText;
 
     // Parse the response - handle both array and object with array property
     let trendsData: any[];
-    const parsed = JSON.parse(response);
+    const parsed = JSON.parse(jsonContent);
     
     if (Array.isArray(parsed)) {
       trendsData = parsed;
@@ -125,6 +162,7 @@ export async function generateDynamicTrends(
           source: trend.source || 'Industry Analysis',
           source_url: urlValidationResult.url,
           source_verified: urlValidationResult.verified,
+          web_search_citations: citations, // Add web search citations
           created_at: new Date(currentDate.getTime() - (index * 24 * 60 * 60 * 1000)), // Stagger dates
           updated_at: new Date(),
         };
@@ -135,15 +173,29 @@ export async function generateDynamicTrends(
   } catch (error) {
     console.error('Error generating dynamic trends:', error);
     
+    // Log the full error for debugging
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause
+      });
+    }
+    
     // Throw error with appropriate message based on error type
     if (error instanceof Error) {
-      if (error.message.includes('API key')) {
-        throw new Error('OpenAI API key is not configured. Please contact support.');
-      } else if (error.message.includes('rate limit')) {
+      if (error.message.includes('API key') || error.message.includes('api_key')) {
+        throw new Error('Anthropic API key is not configured. Please contact support.');
+      } else if (error.message.includes('rate limit') || error.message.includes('rate_limit')) {
         throw new Error('You\'ve reached the rate limit. Please try again in a few minutes.');
       } else if (error.message.includes('network')) {
         throw new Error('Unable to connect to the AI service. Please check your internet connection.');
+      } else if (error.message.includes('JSON')) {
+        throw new Error(`Invalid JSON response from AI: ${error.message}`);
       }
+      
+      // Pass through the original error message for debugging
+      throw new Error(`AI generation failed: ${error.message}`);
     }
     
     throw new Error('Failed to generate content. Please try again or contact support if the issue persists.');
@@ -231,6 +283,41 @@ async function validateAndFixSourceUrlWithStatus(
 
   // URL verification disabled - assume valid if it passes basic validation
   return { url, verified: true };
+}
+
+/**
+ * Extract web search citations from API response (not available with Anthropic)
+ */
+function extractWebSearchCitations(response: any): WebSearchCitation[] {
+  const citations: WebSearchCitation[] = [];
+  
+  try {
+    // Check if response has output items with annotations
+    if (response.output && Array.isArray(response.output)) {
+      for (const item of response.output) {
+        if (item.type === 'message' && item.content && Array.isArray(item.content)) {
+          for (const content of item.content) {
+            if (content.type === 'output_text' && content.annotations && Array.isArray(content.annotations)) {
+              for (const annotation of content.annotations) {
+                if (annotation.type === 'url_citation') {
+                  citations.push({
+                    url: annotation.url,
+                    title: annotation.title || 'Web Search Result',
+                    start_index: annotation.start_index,
+                    end_index: annotation.end_index,
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to extract web search citations:', error);
+  }
+  
+  return citations;
 }
 
 /**

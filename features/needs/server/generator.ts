@@ -1,6 +1,6 @@
 import { CompanyContext, Need, NeedCategory, NeedPriority } from '../types/need';
 import { getTrendById } from '@/features/trends/services/trend-service';
-import { generateCompletion } from '@/lib/ai/openai';
+import { generateCompletion } from '@/lib/ai/anthropic';
 import { serverConfig } from '@/lib/config/server';
 
 /**

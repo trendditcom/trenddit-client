@@ -133,9 +133,9 @@ function validateMaxTokens(maxTokens: number | undefined): number | undefined {
  * Works in both client and server environments
  */
 export function getAIModelFromSettings(): string {
-  // For now, just return the default model
+  // For now, just return the default Claude model with web search support
   // In the future, this could be configurable in the settings UI
-  return 'gpt-4o-mini';
+  return 'claude-sonnet-4-20250514';
 }
 
 /**
@@ -175,8 +175,15 @@ ${companyProfile.businessSize ? `- Consider the scale and resources of ${company
 
 ENSURE BALANCED DISTRIBUTION: The response must contain ${trendsPerCategory} trends from each category for a total of ${limit} trends.`;
 
-  // Construct the main prompt using user-editable and system-controlled parts
-  const prompt = `You are a leading AI and technology market analyst with real-time knowledge of current events. Generate ${limit} current, relevant AI/technology trends for ${currentMonth} with BALANCED CATEGORY DISTRIBUTION.
+  // Construct the main prompt optimized for web search API
+  const prompt = `Generate ${limit} current, relevant AI/technology trends for ${currentMonth} with BALANCED CATEGORY DISTRIBUTION.
+
+WEB SEARCH STRATEGY (the AI will search for these automatically):
+- Search for "latest AI technology trends ${currentMonth.split(' ')[0]} ${currentMonth.split(' ')[1]}"
+- Search for "AI industry news ${currentMonth.split(' ')[1]}"
+- Search for "technology breakthroughs ${currentMonth.split(' ')[1]}"
+- Search for "AI regulatory developments ${currentMonth.split(' ')[1]}"
+- Search for specific categories: "AI consumer products news", "AI competition updates", "AI economy impact", "AI regulation changes"
 
 USER REQUIREMENTS:
 ${settings.userPrompt.trendFocus}
@@ -219,7 +226,7 @@ Return as JSON array with this structure:
   }
 ]
 
-IMPORTANT: Each source_url must be a valid, specific URL that would actually exist for the source of the trend.`;
+IMPORTANT: Use the web search results to find REAL, CURRENT articles. Each source_url MUST be an actual URL from the web search results, not a generated or placeholder URL. Only include trends that you found through web search with verified sources.`;
 
   return prompt;
 }
