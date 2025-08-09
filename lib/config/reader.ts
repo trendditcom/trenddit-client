@@ -81,10 +81,10 @@ export function getConfig(): Config {
         environment: process.env.NODE_ENV || 'development',
       },
       ai: {
-        provider: 'openai',
-        model: 'gpt-4o-mini',
-        temperature: 0.7,
-        max_tokens: 3000,
+        provider: 'anthropic',
+        model: 'claude-sonnet-4-20250514',
+        temperature: 0.3,
+        max_tokens: 4000,
       },
     };
   }

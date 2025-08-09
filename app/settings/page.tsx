@@ -47,6 +47,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const [settings, setSettings] = useState<TrendPromptSettings>(DEFAULT_TREND_SETTINGS);
   const [hasChanges, setHasChanges] = useState(false);
+  const [currentModel, setCurrentModel] = useState(CONFIG_CONSTANTS.ai.defaultModel);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [copySuccess, setCopySuccess] = useState<'system' | 'user' | null>(null);
@@ -69,6 +70,12 @@ export default function SettingsPage() {
     } catch (error) {
       console.warn('Failed to load settings from localStorage:', error);
     }
+  }, []);
+
+  // Load current model from config
+  useEffect(() => {
+    // For client-side, we use the constants which should match config.yml
+    setCurrentModel(CONFIG_CONSTANTS.ai.defaultModel);
   }, []);
 
   const handleSave = async () => {
@@ -556,7 +563,7 @@ export default function SettingsPage() {
                   <Alert>
                     <Info className="h-4 w-4" />
                     <AlertDescription>
-                      <strong>Model:</strong> Currently using gpt-4o-mini for optimal cost/performance balance. 
+                      <strong>Model:</strong> Currently using {currentModel} for optimal cost/performance balance. 
                       Model selection may become configurable in future versions.
                     </AlertDescription>
                   </Alert>
@@ -660,7 +667,7 @@ export default function SettingsPage() {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div className="bg-gray-50 p-3 rounded">
                             <div className="text-gray-600 mb-1">Model</div>
-                            <div className="font-medium">gpt-4o-mini</div>
+                            <div className="font-medium">{currentModel}</div>
                           </div>
                           <div className="bg-gray-50 p-3 rounded">
                             <div className="text-gray-600 mb-1">Temperature</div>
@@ -768,7 +775,7 @@ export default function SettingsPage() {
                         </div>
                         <div>
                           <span className="text-gray-600">Model:</span>
-                          <div className="font-medium">gpt-4o-mini</div>
+                          <div className="font-medium">{currentModel}</div>
                         </div>
                         <div>
                           <span className="text-gray-600">Temperature:</span>

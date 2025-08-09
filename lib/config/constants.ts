@@ -10,8 +10,8 @@ export const CONFIG_CONSTANTS = {
     // This should be kept in sync with config.yml
     systemPrompt: 'You are a market intelligence analyst with web search capabilities. Search for and analyze the latest AI and technology developments to generate current, factual trends. Use web search to verify all information and source URLs. Always return valid JSON with real sources.',
     
-    // Default model settings
-    defaultModel: 'gpt-4o-mini',
+    // Default model settings - should match config.yml
+    defaultModel: 'claude-sonnet-4-20250514',
     defaultTemperature: 0.7,
     defaultMaxTokens: 3000,
   },

@@ -133,9 +133,23 @@ function validateMaxTokens(maxTokens: number | undefined): number | undefined {
  * Works in both client and server environments
  */
 export function getAIModelFromSettings(): string {
-  // For now, just return the default Claude model with web search support
-  // In the future, this could be configurable in the settings UI
-  return 'claude-sonnet-4-20250514';
+  // Get model from config.yml dynamically
+  try {
+    if (typeof window === 'undefined') {
+      // Server-side: use getAIModel from config reader
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { getAIModel } = require('@/lib/config/reader');
+      return getAIModel();
+    } else {
+      // Client-side: use constants as fallback  
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { CONFIG_CONSTANTS } = require('@/lib/config/constants');
+      return CONFIG_CONSTANTS.ai.defaultModel;
+    }
+  } catch (error) {
+    console.warn('Failed to get AI model from config, using fallback:', error);
+    return 'claude-sonnet-4-20250514';
+  }
 }
 
 /**

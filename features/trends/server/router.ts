@@ -251,8 +251,9 @@ export const trendsRouter = router({
         );
 
         // Call Anthropic using messages API with web search
+        const { getAIModel } = await import('@/lib/config/reader');
         const response = await anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: getAIModel(),
           max_tokens: 4000,
           temperature: 0.7,
           system: `${systemMessage}\n\nYou have access to web search. Use it to find current AI and technology trends. You must always return valid JSON as your response.`,

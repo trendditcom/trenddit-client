@@ -117,7 +117,7 @@ ${companyContext.goals && companyContext.goals.length > 0 ? `- Each solution sho
 
   try {
     const completion = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: getAIModel(),
       max_tokens: 3000,
       temperature: 0.3,
       system: 'You are an expert enterprise solution architect with current knowledge of technology vendors, market rates, and implementation approaches. You have web search access to find the latest vendor information and pricing. Always return valid JSON with realistic, actionable solutions.',

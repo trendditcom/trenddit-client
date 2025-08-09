@@ -118,7 +118,7 @@ Respond in JSON format:
 }`;
 
         const conversationalAIResponse = await anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: getAIModel(),
           max_tokens: 1000,
           temperature: 0.4,
           system: `You are an expert AI advisor specializing in ${input.userRole} concerns. Generate contextual, role-specific conversational elements. Use web search for current information. Always respond with valid JSON only.`,
@@ -225,7 +225,7 @@ Respond in JSON format:
 }`;
 
         const marketImpactResponse = await anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: getAIModel(),
           max_tokens: 1000,
           temperature: 0.3,
           system: 'You are a competitive intelligence analyst. Analyze competitor activities and generate strategic market insights. Use web search for current market data. Always respond with valid JSON only.',
@@ -394,7 +394,7 @@ Respond in JSON format:
 
         // Generate real-time trending topics using AI
         const trendingTopicsResponse = await anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: getAIModel(),
           max_tokens: 800,
           temperature: 0.3,
           system: 'You are a market intelligence analyst. Generate current trending topics in AI and technology with mention counts, sentiment, and trend direction. Use web search to find latest trends. Always respond with valid JSON only.',
@@ -425,7 +425,7 @@ Respond in JSON format:
 
         // Generate real-time market signals using AI
         const marketSignalsResponse = await anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: getAIModel(),
           max_tokens: 800,
           temperature: 0.3,
           system: 'You are a senior market analyst. Generate current market signals for AI and technology trends with strength and confidence assessments. Use web search for current market data. Always respond with valid JSON only.',

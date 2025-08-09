@@ -460,7 +460,7 @@ Respond in JSON format:
       }
 
       const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: getAIModel(),
         max_tokens: 2000,
         temperature: 0.3,
         system: `You are a senior market intelligence analyst with expertise in AI and technology trends. 

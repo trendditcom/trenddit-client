@@ -9,8 +9,23 @@ export const anthropic = new Anthropic({
  * Get AI model with safe fallback for client environments
  */
 function getSafeAIModel(): string {
-  // Use Claude Sonnet 4 with web search support
-  return 'claude-sonnet-4-20250514';
+  // Try to get model from config, fallback to default
+  try {
+    if (typeof window === 'undefined') {
+      // Server-side: import dynamically to avoid bundling issues
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { getAIModel } = require('@/lib/config/reader');
+      return getAIModel();
+    } else {
+      // Client-side: import dynamically
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { CONFIG_CONSTANTS } = require('@/lib/config/constants');
+      return CONFIG_CONSTANTS.ai.defaultModel;
+    }
+  } catch {
+    // Ultimate fallback
+    return 'claude-sonnet-4-20250514';
+  }
 }
 
 export async function generateCompletion(prompt: string): Promise<string> {

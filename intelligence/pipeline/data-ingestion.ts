@@ -326,7 +326,7 @@ Respond in JSON format:
 }`;
 
       const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: getAIModel(),
         max_tokens: 1500,
         temperature: 0.2,
         system: 'You are an expert intelligence analyst specializing in technology and market trends. Analyze data comprehensively and objectively. Use web search to verify and supplement information when needed.',

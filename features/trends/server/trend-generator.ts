@@ -59,7 +59,7 @@ export async function generateDynamicTrends(
     
     // Use Anthropic's messages API with web search
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: getAIModelFromSettings(),
       max_tokens: 4000,
       temperature: 0.7,
       system: `${serverConfig.ai.systemPrompt}\n\nYou have access to web search to find current information. Use it to research the latest AI and technology trends. Always return valid JSON as your response.`,
