@@ -1,6 +1,6 @@
 <div align="center">
 
-# Trenddit Client
+# Trenddit Client: New home https://github.com/navam-io/trends
 
 **🧠 AI-First Enterprise Intelligence Platform**
 
